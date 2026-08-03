@@ -19,9 +19,17 @@ PanelWindow {
         right: true
     }
 
-    // Fixed forever. This must never animate — the notch overlays content when
-    // it expands rather than pushing it, because reflowing every window on
-    // every notification is intolerable (DESIGN.md §3).
+    // Reserve exactly the bar height, forever, no matter how tall the surface
+    // itself gets.
+    //
+    // exclusionMode MUST be set. It defaults to Auto, which derives the
+    // exclusive zone from the window's size and anchors "if exactly 3 anchors
+    // are connected" — which is exactly this window (top, left, right). Under
+    // Auto the explicit exclusiveZone below is ignored, so the reserved space
+    // tracked the animating window height and every window on screen reflowed
+    // each time the notch opened or a notification cleared. That is the thing
+    // DESIGN.md §3 says must never happen.
+    exclusionMode: ExclusionMode.Normal
     exclusiveZone: Config.bar.height
 
     color: "transparent"
@@ -43,10 +51,18 @@ PanelWindow {
         Region { item: status }
     }
 
-    // The bar surface is only as tall as the bar, but the dashboard grows
-    // beyond it. Without extending the window, the panel is clipped at 46px.
-    implicitHeight: Math.max(Config.bar.height,
-                             notch.y + notch.implicitHeight + Config.bar.topMargin)
+    // FIXED height, large enough for the tallest thing the notch can become.
+    //
+    // This must not track the notch. A layer surface that changes size makes
+    // the compositor animate the resize (hl.animation leaf "layers"), which
+    // lands on top of the notch's own animation and reads as the whole bar
+    // bouncing every time a panel opens or a notification clears.
+    //
+    // The surface is transparent and the mask restricts input to the islands,
+    // so a permanently tall window costs nothing: the area below the bar is
+    // click-through, and the blur layer rule sets ignore_alpha so fully
+    // transparent pixels are not blurred either.
+    implicitHeight: Config.bar.topMargin + Config.notch.panelHeight + Config.bar.height
 
     WorkspaceIsland {
         id: workspaces
