@@ -72,8 +72,9 @@ hl.config({
   dwindle = {
     -- New window keeps the split direction of the focused one rather than
     -- always alternating — more predictable when you are building a layout.
-    pseudotile     = true,
     preserve_split = true,
+    -- NOT `pseudotile`: that is not a dwindle option. Pseudotiling is a
+    -- per-window state, set by the SUPER+SHIFT+P dispatcher or a window rule.
   },
 
   misc = {
@@ -83,9 +84,9 @@ hl.config({
     force_default_wallpaper   = 0,
     -- Focus follows the window you open, not the mouse.
     focus_on_activate         = true,
-    -- VFR drops the refresh rate when nothing moves. On a laptop this is free
-    -- battery; there is no reason to render 60fps of a static screen.
-    vfr                       = true,
+    -- NOT `vfr`: it lives under `debug`, not `misc`, and defaults to true
+    -- ("heavily recommended to leave enabled"). Setting it here is both wrong
+    -- and unnecessary.
   },
 
   animations = { enabled = true },

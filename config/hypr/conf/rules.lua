@@ -21,11 +21,18 @@ hl.window_rule({ match = { class = "^(nm-connection-editor)$" },   float = true 
 hl.window_rule({ match = { class = "^(pavucontrol)$" },            float = true })
 
 -- Picture-in-picture: floating, pinned above workspaces, no border.
+-- `border_size = 0`, not `no_border` — that one is a WORKSPACE rule, not a
+-- window rule.
 hl.window_rule({ match = { title = "^(Picture-in-Picture)$" },
-                 float = true, pin = true, no_border = true, size = { 480, 270 } })
+                 float = true, pin = true, border_size = 0, size = { 480, 270 } })
 
--- Thunar's bulk-rename and progress dialogs.
-hl.window_rule({ match = { class = "^(thunar)$", title = "^(?!Thunar$).*" }, float = true })
+-- Thunar's bulk-rename and progress dialogs — every thunar window whose title
+-- is not the plain file manager.
+--
+-- Hyprland matches with Google's RE2, which has NO lookahead: the obvious
+-- `^(?!Thunar$).*` is a syntax error, not a non-match. RE2 negation is a
+-- `negative:` prefix on the whole pattern instead.
+hl.window_rule({ match = { class = "^(thunar)$", title = "negative:^Thunar$" }, float = true })
 
 -- Zen and Firefox open a sharing indicator that is 40px tall and would
 -- otherwise take a tile.

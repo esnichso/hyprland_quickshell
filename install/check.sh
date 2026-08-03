@@ -217,6 +217,82 @@ import json,sys; print(len(json.load(open("/dev/stdin"))))' <<<"$binds_json" 2>/
     ok "$total binds total"
 fi
 
+# ------------------------------------------------------------- config keys
+
+sec "config keys"
+
+# Validate every key in config/hypr against the wiki snapshot in docs/.
+#
+# This is the one check that runs equally well off a live session, and it earns
+# its place: Hyprland removes and relocates config keys between releases, and an
+# unknown key is not ignored — it is a startup error banner. The first VM boot
+# hit five of them at once (dwindle.pseudotile, misc.vfr, two removed gesture
+# keys, and a window rule using a lookahead RE2 cannot parse).
+#
+# Refresh docs/hyprland/ after a Hyprland update, then re-run this.
+
+if python3 - "$REPO" <<'PYEOF'
+import re, sys, glob, pathlib
+repo = pathlib.Path(sys.argv[1])
+docs = repo / "docs/hyprland"
+var  = docs / "Configuring_Basics_Variables.md"
+if not var.exists():
+    print("  wiki snapshot missing — skipped"); sys.exit(0)
+
+valid = set()
+def add(cat, block):
+    for line in block.splitlines():
+        m = re.match(r'^\|\s*([a-z_][a-z0-9_.]*)\s*\|', line)
+        if m: valid.add(f"{cat}.{m.group(1)}" if cat else m.group(1))
+
+txt = var.read_text()
+parts = re.split(r'_Subcategory `([a-z:._]+)`_', txt)
+add('general', parts[0])
+for i in range(1, len(parts), 2):
+    add(parts[i].rstrip('.').replace(':', '.'), parts[i+1])
+for h, c in [('### General','general'), ('### Decoration','decoration'),
+             ('### Input','input'), ('### Animations','animations')]:
+    m = re.search(re.escape(h) + r'(.*?)(?=\n### |\Z)', txt, re.S)
+    if m: add(c, m.group(1))
+for f, c in [('Configuring_Layouts_Dwindle-Layout.md','dwindle'),
+             ('Configuring_Layouts_Master-Layout.md','master')]:
+    fp = docs / f
+    if fp.exists(): add(c, fp.read_text())
+
+used, bad = [], []
+for f in glob.glob(str(repo / 'config/hypr/conf/*.lua')):
+    src = open(f).read()
+    for m in re.finditer(r'hl\.config\(\{(.*?)\n\}\)', src, re.S):
+        stack = []
+        for line in m.group(1).splitlines():
+            s = line.strip()
+            if not s or s.startswith('--'): continue
+            ind = len(line) - len(line.lstrip())
+            while stack and stack[-1][1] >= ind: stack.pop()
+            k = re.match(r'([a-z_][a-z0-9_]*)\s*=\s*\{', s)
+            v = re.match(r'([a-z_][a-z0-9_]*)\s*=\s*[^{]', s)
+            if k: stack.append((k.group(1), ind))
+            elif v:
+                path = '.'.join(x[0] for x in stack + [(v.group(1), 0)])
+                used.append(path)
+                if path not in valid: bad.append((pathlib.Path(f).name, path))
+
+# RE2 has no lookahead/lookbehind; using one is a parse error, not a non-match.
+# Comments are stripped first — the config documents this pitfall by quoting a
+# bad pattern, and scanning raw text flags the explanation as the offence.
+for f in glob.glob(str(repo / 'config/hypr/conf/*.lua')):
+    code = '\n'.join(re.sub(r'--.*$', '', ln) for ln in open(f).read().splitlines())
+    if re.search(r'\(\?[=!<]', code):
+        bad.append((pathlib.Path(f).name, 'RE2 lookahead/lookbehind in a rule'))
+
+if bad:
+    for f, k in bad:
+        print(f"  \033[31m ✗ \033[0m {k}  ({f})")
+    sys.exit(1)
+print(f"  \033[32m ✓ \033[0m {len(used)} config keys, all known to the wiki")
+PYEOF
+then pass=$((pass+1)); else fail=$((fail+1)); fi
+
 # ---------------------------------------------------------------- hardware
 
 sec "hardware"

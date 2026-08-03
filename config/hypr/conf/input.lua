@@ -28,10 +28,9 @@ hl.config({
   },
 
   gestures = {
-    -- Three-finger horizontal swipe changes workspace. Four fingers is
-    -- awkward on this trackpad's size.
-    workspace_swipe                  = true,
-    workspace_swipe_fingers          = 3,
+    -- NOTE: `workspace_swipe` and `workspace_swipe_fingers` no longer exist.
+    -- They were removed in favour of the hl.gesture() system below; what stays
+    -- here is only the tuning for the swipe once a gesture triggers it.
     workspace_swipe_distance         = 300,
     workspace_swipe_cancel_ratio     = 0.4,
     workspace_swipe_min_speed_to_force = 20,
@@ -47,4 +46,13 @@ hl.config({
     -- should not move the mouse out from under your hand.
     no_warps          = true,
   },
+})
+
+-- Gestures are declared, not configured. The old `gestures.workspace_swipe`
+-- boolean was replaced by this system, which can bind any gesture to any
+-- action rather than hardcoding workspace switching.
+hl.gesture({
+  fingers   = 3,
+  direction = "horizontal",
+  action    = "workspace",
 })
