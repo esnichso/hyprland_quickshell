@@ -10,6 +10,7 @@
 #   ./install/install.sh --services   enable system/user services
 #   ./install/install.sh --theme      regenerate the palette
 #   ./install/install.sh --theme <name|/path/to/wallpaper.jpg>
+#   ./install/install.sh --yes        never prompt (answers yes, not no)
 
 set -euo pipefail
 
@@ -17,6 +18,7 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
+PACMAN_CONFIRM=""          # set to --noconfirm by --yes
 BACKUP="$HOME/.config-backup-$STAMP"
 
 c_ok=$'\e[32m'; c_warn=$'\e[33m'; c_err=$'\e[31m'; c_dim=$'\e[2m'; c_off=$'\e[0m'
@@ -100,7 +102,13 @@ do_packages() {
     done < "$REPO/install/packages.txt"
 
     ok "${#list[@]} packages from the official repos"
-    sudo pacman -S --needed --noconfirm "${list[@]}"
+
+    # Interactive by default. --noconfirm answers N to every question,
+    # including "package X conflicts with Y, remove Y?" -- which turns a
+    # resolvable prompt into "Nicht auflösbare Paketkonflikte gefunden" and
+    # aborts the whole install. A conflict is a decision for you to make, not
+    # one to auto-decline. Pass --yes if you want it unattended anyway.
+    sudo pacman -S --needed $PACMAN_CONFIRM "${list[@]}"
 
     # Anything QuickShell replaces must not be installed. Two daemons owning
     # org.freedesktop.Notifications is a coin flip at login, and a stray waybar
@@ -127,7 +135,7 @@ do_packages() {
         local helper=""
         for h in paru yay; do command -v "$h" >/dev/null && { helper="$h"; break; }; done
         if [[ -n "$helper" ]]; then
-            "$helper" -S --needed --noconfirm "${aur[@]}"
+            "$helper" -S --needed $PACMAN_CONFIRM "${aur[@]}"
         else
             warn "no AUR helper (paru/yay) — install manually: ${aur[*]}"
         fi
@@ -295,7 +303,8 @@ main() {
             --services) do_all=0; svc=1 ;;
             --theme)    do_all=0; theme=1
                         [[ ${2:-} && ${2:-} != --* ]] && { theme_arg="$2"; shift; } ;;
-            -h|--help)  sed -n '2,14p' "$0"; exit 0 ;;
+            --yes|-y)   PACMAN_CONFIRM="--noconfirm" ;;
+            -h|--help)  sed -n '2,13p' "$0"; exit 0 ;;
             *)          die "unknown flag: $1" ;;
         esac
         shift

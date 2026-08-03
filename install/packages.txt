@@ -15,8 +15,13 @@ xorg-xwayland
 pipewire
 pipewire-alsa
 pipewire-pulse
-pipewire-jack
 wireplumber
+# NOT pipewire-jack: it conflicts with jack2, which CachyOS installs by
+# default, and it is only needed for JACK-specific pro-audio applications
+# (Ardour, Carla, Reaper). Normal desktop audio -- including every browser,
+# game and video call -- runs on pipewire-pulse and pipewire-alsa alone.
+# If you ever do want JACK apps routed through PipeWire:
+#   sudo pacman -S pipewire-jack      (pacman will offer to remove jack2)
 sddm
 xdg-user-dirs
 gnome-keyring
