@@ -343,7 +343,7 @@ Item {
                     Text {
                         text: modelData.appName
                         color: Theme.onSurfaceVariant
-                        font.family: "Inter"; font.pixelSize: 10.5
+                        font.family: "Inter"; font.pixelSize: 11
                     }
                     Item { width: parent.width - 120; height: 1 }
                 }
@@ -362,7 +362,7 @@ Item {
                     visible: text !== ""
                     text: modelData.body
                     color: Theme.onSurfaceVariant
-                    font.family: "Inter"; font.pixelSize: 11.5
+                    font.family: "Inter"; font.pixelSize: 12
                     elide: Text.ElideRight
                     maximumLineCount: 2
                     wrapMode: Text.Wrap

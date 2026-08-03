@@ -239,6 +239,55 @@ import json,sys; print(len(json.load(open("/dev/stdin"))))' <<<"$binds_json" 2>/
     ok "$total binds total"
 fi
 
+# ------------------------------------------------------------------ qml lint
+
+sec "qml"
+
+# A narrow lint for things that are hard load failures, not style.
+#
+# QML cannot be parsed on the dev host: /usr/bin/qmllint there is a qtchooser
+# stub for a Qt5 binary that is not installed, and it fails identically on valid
+# and invalid input, so its verdict is worthless. That leaves targeted checks
+# for mistakes that have actually happened.
+#
+# The whole shell failed to load once because font.pixelSize was 10.5. It is an
+# INT in Qt; a fractional value aborts the file, and every type that imports it
+# then reports "Type X unavailable" — so the error surfaces five frames away
+# from its cause.
+
+if python3 - "$REPO" <<'PYEOF'
+import re, sys, pathlib
+repo = pathlib.Path(sys.argv[1])
+qml = sorted((repo / "config/quickshell").rglob("*.qml"))
+if not qml:
+    print("  no QML found — skipped"); sys.exit(0)
+
+# QML properties typed int. A real assigned to any of these fails to load.
+INT_PROPS = ["font.pixelSize", "font.weight", "maximumLineCount",
+             "interval", "elideWidth", "cursorPosition"]
+
+bad = []
+for f in qml:
+    for i, line in enumerate(f.read_text().splitlines(), 1):
+        code = re.sub(r"//.*$", "", line)
+        for prop in INT_PROPS:
+            m = re.search(rf"\b{re.escape(prop)}\s*:\s*(-?[0-9]+\.[0-9]+)\s*$", code)
+            if m:
+                bad.append((f.relative_to(repo), i, prop, m.group(1)))
+
+        # Balanced-brace typos are caught by the parser, but an unclosed string
+        # is not obvious in a diff.
+        if code.count('"') % 2 == 1 and "\\\"" not in code:
+            bad.append((f.relative_to(repo), i, "unbalanced quote", code.strip()[:40]))
+
+if bad:
+    for f, i, prop, val in bad:
+        print(f"  \033[31m ✗ \033[0m {f}:{i}  {prop} = {val}  (int expected)")
+    sys.exit(1)
+print(f"  \033[32m ✓ \033[0m {len(qml)} QML files, no fractional int assignments")
+PYEOF
+then pass=$((pass+1)); else fail=$((fail+1)); fi
+
 # ------------------------------------------------------------- config keys
 
 sec "config keys"

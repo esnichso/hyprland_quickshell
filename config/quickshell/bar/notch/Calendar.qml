@@ -145,7 +145,7 @@ Item {
                                  : modelData.outside ? Qt.alpha(Theme.onSurfaceVariant, 0.3)
                                  : Theme.onSurfaceVariant
                             font.family: "Inter"
-                            font.pixelSize: 10.5
+                            font.pixelSize: 11
                             font.weight: modelData.isToday ? Font.Bold : Font.Normal
                             font.features: ({ "tnum": 1 })
                         }
