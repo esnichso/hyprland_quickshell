@@ -58,12 +58,19 @@ alias gd 'git diff'
 alias gl 'git log --oneline --graph --decorate -20'
 
 # --- this repo ------------------------------------------------------------
-# The two commands you will actually run while iterating on the desktop.
-alias hs-check '~/HPI/projects/hypersetup2/install/check.sh'
-alias hs-theme '~/HPI/projects/hypersetup2/install/install.sh --theme'
+# Find the repo by following the symlink that put this file here, rather than
+# hardcoding a path: the checkout lives somewhere different on the dev host and
+# on each machine it is installed to.
+#   ~/.config/fish -> <repo>/config/fish
+if test -L ~/.config/fish
+    set -g HYPERSETUP (dirname (dirname (realpath ~/.config/fish)))
+    alias hs-check "$HYPERSETUP/install/check.sh"
+    alias hs-theme "$HYPERSETUP/install/install.sh --theme"
+    alias hs-cd "cd $HYPERSETUP"
+end
 # Restart the shell without logging out. Saving a QML file hot-reloads, so this
 # is only for changes QuickShell cannot pick up (new singletons, IPC handlers).
-alias qs-restart 'qs kill; and sleep 0.5; and uwsm app -- qs -c hypersetup2 &; disown'
+alias qs-restart 'qs kill; and sleep 0.5; and uwsm app -- qs &; disown'
 
 # --- environment ----------------------------------------------------------
 fish_add_path -g ~/.local/bin

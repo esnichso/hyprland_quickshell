@@ -105,7 +105,8 @@ running it in the VM, and nowhere else.
 **Available on a real session:**
 
 ```bash
-qs -c hypersetup2                 # run the shell; QML edits hot-reload
+qs                                # run the shell; QML edits hot-reload
+qs list                           # what configs quickshell can actually see
 qs kill                           # ...when they don't
 hyprctl binds                     # the authoritative bind list
 hyprctl layers                    # real layer namespaces — do not write these from memory
@@ -117,6 +118,13 @@ pacman -Si quickshell matugen hyprland hyprpaper
 
 There is no test suite, no linter config, and no build step. QML is validated by
 running it.
+
+**`qs`, not `qs -c <name>`.** `config/quickshell` is symlinked to
+`~/.config/quickshell`, putting `shell.qml` at the base of that directory.
+Quickshell then registers it as the *default* config and ignores subdirectories
+entirely, so `-c` has nothing to select. Moving to a named config would mean
+relocating the symlink, the matugen output paths, and the paths in `Config.qml`
+and `Theme.qml` — not worth it for one machine.
 
 ## Architecture
 

@@ -19,8 +19,13 @@ end
 
 -- Ask the shell to do something. One IPC path for every panel, so adding a
 -- panel never means inventing a new mechanism.
+--
+-- No `-c`: this repo symlinks config/quickshell to ~/.config/quickshell, so
+-- shell.qml sits at the base of that directory. Quickshell then registers it
+-- as the DEFAULT config and ignores subdirectories entirely -- `-c <name>`
+-- looks for ~/.config/quickshell/<name>/shell.qml, which does not exist.
 local function shell(target)
-  return hl.dsp.exec_cmd("qs -c hypersetup2 ipc call panels toggle " .. target)
+  return hl.dsp.exec_cmd("qs ipc call panels toggle " .. target)
 end
 
 local terminal    = "kitty"

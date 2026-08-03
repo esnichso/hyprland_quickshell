@@ -25,5 +25,5 @@ hl.on("hyprland.start", function()
   hl.exec_cmd("hypridle")
 
   -- The shell. Everything visible comes from this one process.
-  hl.exec_cmd("uwsm app -- qs -c hypersetup2")
+  hl.exec_cmd("uwsm app -- qs")
 end)

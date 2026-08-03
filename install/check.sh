@@ -66,10 +66,32 @@ fi
 
 sec "shell"
 
+# Is shell.qml where quickshell will actually look? A config that exists on
+# disk but not on quickshell's search path fails with "Could not find ... in
+# any valid config path", which reads like a missing file rather than a
+# misplaced one.
+if [[ -f "$CONFIG_HOME/quickshell/shell.qml" ]]; then
+    ok "shell.qml at the base of ~/.config/quickshell (loads as the default config)"
+elif compgen -G "$CONFIG_HOME/quickshell/*/shell.qml" >/dev/null; then
+    no "shell.qml is in a subdirectory — this setup expects it at the base, run install.sh --link"
+else
+    no "no shell.qml anywhere under ~/.config/quickshell — run install.sh --link"
+fi
+
+if command -v qs >/dev/null; then
+    # `qs list` reports what quickshell can see, which is the only opinion
+    # that matters.
+    if qs list 2>/dev/null | grep -qi 'default'; then
+        ok "quickshell sees a default config"
+    else
+        no "quickshell does not see a default config: $(qs list 2>&1 | head -2 | tr '\n' ' ')"
+    fi
+fi
+
 if pgrep -x quickshell >/dev/null; then
     ok "quickshell running"
 else
-    no "quickshell not running — start it: uwsm app -- qs -c hypersetup2"
+    no "quickshell not running — start it: uwsm app -- qs"
 fi
 
 # The layer namespaces the bar declares must match conf/rules.lua, or the blur
