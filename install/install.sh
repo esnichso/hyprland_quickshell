@@ -47,13 +47,44 @@ preflight() {
         fi
     fi
 
-    # Arrow Lake has no AVX-512. CachyOS v4 repos require it; installing them
-    # produces a system that fails to boot with SIGILL.
-    if [[ -r /proc/cpuinfo ]] && ! grep -qm1 avx512f /proc/cpuinfo; then
-        if grep -rqs 'cachyos-v4' /etc/pacman.conf /etc/pacman.d/ 2>/dev/null; then
-            die "cachyos-v4 repos enabled but this CPU has no AVX-512 — switch to v3"
-        fi
-        ok "no AVX-512, and no v4 repos enabled"
+    # CachyOS ships repos per x86-64 microarchitecture level. v4 requires
+    # AVX-512, which Arrow Lake does not have (Intel dropped it from consumer
+    # P+E designs). Running v4 binaries without it is SIGILL on first use.
+    #
+    # Ask the dynamic loader what the CPU actually supports rather than
+    # inferring from one flag — in a VM the answer depends on the QEMU CPU
+    # model, and the default qemu64 model supports only x86-64-v1.
+    # The loader prints, e.g.:
+    #   x86-64-v4
+    #   x86-64-v3 (supported, searched)
+    # Note the marker is "(supported, searched)" — matching on "(supported)"
+    # alone finds nothing and silently skips this whole check.
+    local isa="" ld=""
+    for c in /lib64/ld-linux-x86-64.so.2 /lib/ld-linux-x86-64.so.2 \
+             /usr/lib/ld-linux-x86-64.so.2; do
+        [[ -x "$c" ]] && { ld="$c"; break; }
+    done
+    if [[ -n "$ld" ]]; then
+        isa="$("$ld" --help 2>/dev/null \
+               | grep -oE 'x86-64-v[0-9] \(supported' \
+               | grep -oE 'v[0-9]' | sort -u | tail -1)"
+    fi
+    [[ -n "$isa" ]] && ok "CPU supports up to x86-64-$isa"
+
+    # Match every v4 section: [cachyos-v4], [cachyos-core-v4], [cachyos-extra-v4].
+    local v4
+    v4="$(grep -hoE '^\[cachyos[a-z-]*-v4\]' /etc/pacman.conf 2>/dev/null | tr -d '[]' | paste -sd' ' || true)"
+
+    if [[ -n "$v4" ]] && [[ "$isa" != "v4" ]]; then
+        die "v4 repos enabled ($v4) but this CPU tops out at x86-64-${isa:-?}.
+     Fix:  curl -O https://mirror.cachyos.org/cachyos-repo.tar.xz
+           tar xf cachyos-repo.tar.xz && cd cachyos-repo && sudo ./cachyos-repo.sh
+           sudo pacman -Syyuu
+     The script re-detects the ISA level and rewrites /etc/pacman.conf."
+    elif [[ -n "$v4" ]]; then
+        ok "v4 repos enabled and the CPU supports x86-64-v4"
+    else
+        ok "no v4 repos enabled"
     fi
 }
 
