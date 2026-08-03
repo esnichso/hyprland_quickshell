@@ -8,10 +8,14 @@ A Hyprland desktop for **CachyOS** on a **ThinkPad E16 Gen 3**, where the whole
 shell layer — bar, notifications, OSD, launcher, control centre, power menu — is
 a single **QuickShell** (QML) process.
 
-**Current state: Phase 1 written, never executed.** `config/` and `install/`
-exist; nothing in them has run. The dev host is Ubuntu, where Hyprland and
-QuickShell cannot be installed, so the first CachyOS VM boot is the first time
-any of this executes. Treat every file as unproven.
+**Current state: Phase 2d.** Running in a CachyOS VM. The compositor, the bar
+and the notch all work — clock, OSD, notification toasts, dashboard. Phase 2e
+(launcher, control centre, power, sysmon, wallpaper picker) is **not started**;
+their keybinds exist and log `not implemented`. Network and bluetooth in the
+status island are deliberate placeholders until the control centre binds them.
+
+Nothing has run on metal. The dev host is Ubuntu, where Hyprland and QuickShell
+cannot be installed, so anything untested in the VM is unproven.
 
 The documents below are the specification; `docs/hyprland/` is a wiki snapshot.
 
@@ -96,11 +100,19 @@ always do.
 
 **What can and cannot be verified on the Ubuntu dev host:** bash, JSON and TOML
 parse locally. Lua parses via `luaparser` in a venv (`luac` is not installed).
-**QML cannot be checked at all** — `/usr/bin/qmllint` is a qtchooser stub
-pointing at a Qt5 binary that does not exist, and it fails identically on valid
-and invalid input, so its verdict means nothing. This is the exact trap
-described under "Verify your own work" below. QML correctness is established by
-running it in the VM, and nowhere else.
+**QML cannot be parsed at all** — `/usr/bin/qmllint` is a qtchooser stub pointing
+at a Qt5 binary that does not exist, and it fails identically on valid and
+invalid input, so its verdict means nothing.
+
+`./install/check.sh` runs from the repo anywhere, and two of its sections are
+pure static checks that need no session. Run it before every push:
+
+- **config keys** — diffs every key in `config/hypr` against the 518 keys the
+  wiki snapshot documents, and flags RE2 lookaheads in rules.
+- **qml** — reals assigned to int-typed QML properties, and unbalanced quotes.
+
+Both exist because the corresponding mistake shipped once. Neither replaces
+running the thing.
 
 **Available on a real session:**
 
@@ -233,6 +245,115 @@ AUR package drags in — `bibata-cursor-theme` pulls Pillow, numpy and BLAS.
 `org.freedesktop.Notifications`. swaync, dunst and mako must not be installed;
 `check.sh` fails if they are.
 
+## Mistakes made building this
+
+Every one of these shipped, cost a round trip, and can recur. Grouped by where
+they hide.
+
+### Hyprland config
+
+**Config keys move and get removed between releases, and an unknown key is a
+startup error banner — not something ignored.** The first VM boot hit five at
+once: `dwindle.pseudotile` (never existed — pseudotiling is per-window state),
+`misc.vfr` (lives under `debug`), and `gestures.workspace_swipe` /
+`workspace_swipe_fingers` (removed upstream in favour of `hl.gesture()`).
+`check.sh` now diffs every key against the wiki snapshot. Run it before pushing
+compositor changes, and refresh `docs/hyprland/` after a Hyprland update.
+
+**`no_border` is a workspace rule, not a window rule.** Window rules use
+`border_size = 0`. The rule name existing *somewhere* in the wiki is not
+evidence it is valid where you are using it — check the right table.
+
+**Hyprland matches with Google's RE2, which has no lookahead or lookbehind.**
+`^(?!Thunar$).*` is a parse error, not a non-match. RE2 negates with a
+`negative:` prefix on the whole pattern. `check.sh` greps for `(?=`, `(?!`,
+`(?<`.
+
+**Do not invent `hl.*` functions.** `hl.notify()` looked plausible and does not
+exist. The full surface is discoverable:
+`grep -rhoE "hl\.[a-z_]+\(" docs/hyprland/ | sort -u`.
+
+### QuickShell and QML
+
+**Read the LAST "caused by" line, not the first.** A single bad property aborts
+its file, and every type that imports it then reports "Type X unavailable", so
+the top of the error stack is five frames from the cause. One fractional
+`font.pixelSize` presented as "Type Bar unavailable" in `shell.qml`.
+
+**`font.pixelSize` is an int.** So are `font.weight`, `maximumLineCount` and
+`Timer.interval`. A fractional value fails to load. Linted by `check.sh`.
+
+**`exclusionMode` defaults to `Auto`, which ignores `exclusiveZone`.** Auto
+derives the reserved space from the window's size and anchors "if exactly 3
+anchors are connected" — which describes every edge-anchored bar. The explicit
+`exclusiveZone` was silently unused and windows reflowed on every notch change.
+**Always set `exclusionMode: ExclusionMode.Normal` explicitly.**
+
+**Never let a layer surface change size.** The compositor animates layer resizes
+(`hl.animation` leaf `layers`), and that animation lands on top of whatever the
+shell is animating, reading as a bounce. Size the surface for its largest state
+once and mask input instead.
+
+**A MouseArea declared after its siblings stacks above them and swallows their
+clicks.** The notch's open-dashboard handler sat after the panes and ate every
+click on a notification toast — invisible for ordinary notifications because the
+timer cleared them anyway, fatal for critical ones which have no timer. Declare
+catch-all MouseAreas *before* content, and gate them with `enabled` so intent
+survives a later edit.
+
+**`qs`, not `qs -c <name>`.** `-c` resolves to
+`<xdg>/quickshell/<name>/shell.qml`. This repo symlinks `config/quickshell` to
+`~/.config/quickshell`, so `shell.qml` is at the base — which registers as the
+*default* config and makes subdirectories invisible.
+
+**`NotificationAction.invoke()` already destroys the notification** unless it is
+resident. Calling `dismiss()` afterwards is a second close on a dead object.
+
+**One tracker per resource.** `StatusIsland` grew its own `PwObjectTracker`
+alongside the one in `Audio`. Two trackers on the same nodes is redundant work
+and a way for two components to disagree about the volume. Services are
+singletons for this reason — bind to them, do not re-instantiate.
+
+**Do not name a component the same as one in a directory it imports.** A
+`widgets/Bar.qml` would have shadowed `bar/Bar.qml`, which imports `root:/widgets`.
+
+**When a fetched doc example contradicts working code, trust the code.** A
+`PwObjectTracker` example returned `target:`; the real property is `objects:`,
+and the shipped code was already right. Fetched prose is a summary and can
+paraphrase wrongly — the dedicated type page is the authority.
+
+### Packages
+
+**Verify names and repos against live APIs every time.** `swww` was specified
+from memory and does not exist — not in the repos, not in the AUR. `nwg-look`
+and `wl-clip-persist` were labelled AUR and are in `extra`. Check with
+`pacman -Si <pkg>`, `archlinux.org/packages/search/json/?name=<pkg>`, or the AUR
+RPC before writing a package list.
+
+**Justify each package against this machine, not against a previous list.**
+`pipewire-jack` was carried from v1, conflicts with the `jack2` CachyOS ships by
+default, and is only needed for JACK pro-audio apps — none of which are
+installed.
+
+**`--noconfirm` answers N.** It declined pacman's offer to resolve a conflict and
+then reported "unresolvable conflicts", which was false. Package installation is
+interactive by default; `--yes` opts in. Auto-declining is the worst of the three
+options because it produces a wrong diagnosis.
+
+### Shell scripts
+
+**`((n++))` evaluates to the OLD value, so it returns status 1 when `n` is 0.**
+`ok() { ...; ((pass++)); }` therefore made `ok "x" && something` take the failure
+branch, and `(( $? == 0 )) && ((pass++)) || ((fail++))` incremented *both*
+counters. Use `n=$((n+1))`, which always returns 0.
+
+**Derive the repo root, never hardcode it.** The fish aliases pointed at the dev
+host's checkout and were broken on every other machine. Resolve it from the
+symlink that placed the file: `~/.config/fish -> <repo>/config/fish`.
+
+**`set -e` does not exit on a false `(( )) && cmd` list** — verified, so the
+flag dispatch in `install.sh` is safe. Do not "fix" it.
+
 ## Verify your own work
 
 The two most costly bugs in v1's history were the same mistake — trusting an
@@ -254,6 +375,31 @@ input before its verdict is trusted — otherwise skip loudly.
 Check the file, not the script's success message. Re-read regions you edited:
 v1 twice ended up with duplicated CSS rules, which are valid, warning-free, and
 visually identical.
+
+Three more of the same shape, from this repo:
+
+**A batch edit that finds nothing reports success.** Python's `str.replace` and
+`sed` are silent on no-match. Five `Glyph` anchors were "fixed" by a replace that
+matched zero times, and the claim was passed on as done. **Assert on every
+edit** — that the old text was present, or that the resulting count is what you
+expected. `install.sh`/`check.sh` patches in this repo all do.
+
+**A check that has only ever returned green has not been tested.** Before
+trusting any new check, inject the exact defect it exists to catch, confirm it
+fails with a useful message, restore, and confirm it passes. Both of `check.sh`'s
+static sections were verified this way — the config-key check against an injected
+`dwindle.pseudotile` and a lookahead, the QML lint against the real
+`font.pixelSize: 10.5` line that broke the shell.
+
+**A scanner that reads its own documentation will flag it.** The RE2 lookahead
+check fired on `rules.lua` because the comment there *quotes* a bad pattern to
+explain the pitfall. Strip comments before scanning code for forbidden text.
+
+**Bugs caused by an absent property are invisible in review.** Both of the
+`Bar.qml` failures — `exclusionMode` defaulting to `Auto`, and a layer surface
+that resizes — were about something not written down. Reading the diff cannot
+find them. When a type has a default that changes behaviour (exclusion, focus,
+stacking, sizing), set it explicitly even when the default happens to be right.
 
 ## User preferences
 
