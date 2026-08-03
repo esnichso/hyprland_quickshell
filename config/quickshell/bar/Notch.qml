@@ -79,6 +79,22 @@ IslandSurface {
         onTriggered: Notifs.hidePopup()
     }
 
+    // Opens the dashboard. Declared BEFORE the panes so they stack above it,
+    // and enabled only in the states whose panes hold nothing clickable.
+    //
+    // Both halves matter. This previously sat after the panes, which put it on
+    // top of everything: clicking a notification toast hit this instead of the
+    // toast's own handler, so the toast was never dismissed and a critical
+    // notification -- which has no auto-dismiss timer by design -- could not be
+    // got rid of at all.
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton
+        cursorShape: Qt.PointingHandCursor
+        enabled: root.state_ === "rest" || root.state_ === "osd"
+        onClicked: Panels.toggle("dashboard")
+    }
+
     // ---- panes ------------------------------------------------------------
     // Each fades in 60ms after the geometry starts moving. Without that offset
     // the old text is still legible while the shape changes underneath it.
@@ -169,16 +185,6 @@ IslandSurface {
         // The clock shows HH:mm. Waking 60 times a minute to redraw the same
         // glyphs is pure battery cost.
         precision: SystemClock.Minutes
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        acceptedButtons: Qt.LeftButton
-        cursorShape: Qt.PointingHandCursor
-        // Only the collapsed states are a click target for opening the
-        // dashboard; once open, clicks belong to its content.
-        enabled: !root.dashOpen
-        onClicked: Panels.toggle("dashboard")
     }
 
     // Click anywhere outside the bar to close the dashboard. Without this the
