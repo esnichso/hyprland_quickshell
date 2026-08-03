@@ -1,0 +1,292 @@
+#!/usr/bin/env bash
+# hypersetup2 installer.
+#
+# One script, flags instead of siblings. Idempotent: safe to re-run, and
+# re-running is the normal way to pick up a new config directory after a pull.
+#
+#   ./install/install.sh              everything
+#   ./install/install.sh --packages   packages only
+#   ./install/install.sh --link       symlinks only
+#   ./install/install.sh --services   enable system/user services
+#   ./install/install.sh --theme      regenerate the palette
+#   ./install/install.sh --theme <name|/path/to/wallpaper.jpg>
+
+set -euo pipefail
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+BACKUP="$HOME/.config-backup-$STAMP"
+
+c_ok=$'\e[32m'; c_warn=$'\e[33m'; c_err=$'\e[31m'; c_dim=$'\e[2m'; c_off=$'\e[0m'
+ok()   { printf '%s  ok %s %s\n' "$c_ok" "$c_off" "$*"; }
+warn() { printf '%s  !! %s %s\n' "$c_warn" "$c_off" "$*"; }
+die()  { printf '%s  XX %s %s\n' "$c_err" "$c_off" "$*" >&2; exit 1; }
+step() { printf '\n%s== %s ==%s\n' "$c_dim" "$*" "$c_off"; }
+
+# ---------------------------------------------------------------- preflight
+
+preflight() {
+    step "preflight"
+
+    command -v pacman >/dev/null || die "no pacman — this is an Arch/CachyOS installer"
+
+    # The one assumption that would invalidate the whole config/hypr tree.
+    # Hyprland 0.55 replaced hyprlang with Lua; below that, nothing here loads.
+    if command -v hyprctl >/dev/null; then
+        local v
+        v="$(hyprctl version 2>/dev/null | grep -oP 'v?\K[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)"
+        if [[ -n "$v" ]]; then
+            local maj min
+            maj="${v%%.*}"; min="$(echo "$v" | cut -d. -f2)"
+            if (( maj == 0 && min < 55 )); then
+                die "hyprland $v is too old — the Lua config needs >= 0.55"
+            fi
+            ok "hyprland $v"
+        fi
+    fi
+
+    # Arrow Lake has no AVX-512. CachyOS v4 repos require it; installing them
+    # produces a system that fails to boot with SIGILL.
+    if [[ -r /proc/cpuinfo ]] && ! grep -qm1 avx512f /proc/cpuinfo; then
+        if grep -rqs 'cachyos-v4' /etc/pacman.conf /etc/pacman.d/ 2>/dev/null; then
+            die "cachyos-v4 repos enabled but this CPU has no AVX-512 — switch to v3"
+        fi
+        ok "no AVX-512, and no v4 repos enabled"
+    fi
+}
+
+# ---------------------------------------------------------------- packages
+
+do_packages() {
+    step "packages"
+
+    local list=()
+    while IFS= read -r line; do
+        line="${line%%#*}"; line="${line// /}"
+        [[ -n "$line" ]] && list+=("$line")
+    done < "$REPO/install/packages.txt"
+
+    ok "${#list[@]} packages from the official repos"
+    sudo pacman -S --needed --noconfirm "${list[@]}"
+
+    # Anything QuickShell replaces must not be installed. Two daemons owning
+    # org.freedesktop.Notifications is a coin flip at login, and a stray waybar
+    # autostart is a confusing thing to debug.
+    local conflicts=(waybar rofi rofi-wayland swaync dunst mako swayosd wofi blueman pavucontrol network-manager-applet)
+    local found=()
+    for p in "${conflicts[@]}"; do
+        pacman -Qq "$p" &>/dev/null && found+=("$p")
+    done
+    if (( ${#found[@]} )); then
+        warn "these are replaced by the shell and should be removed: ${found[*]}"
+        warn "  sudo pacman -Rns ${found[*]}"
+    fi
+
+    # AUR. No helper is installed automatically — that is a choice the user
+    # should make, not something an install script does behind their back.
+    local aur=()
+    while IFS= read -r line; do
+        line="${line%%#*}"; line="${line// /}"
+        [[ -n "$line" ]] && aur+=("$line")
+    done < "$REPO/install/packages-aur.txt"
+
+    if (( ${#aur[@]} )); then
+        local helper=""
+        for h in paru yay; do command -v "$h" >/dev/null && { helper="$h"; break; }; done
+        if [[ -n "$helper" ]]; then
+            "$helper" -S --needed --noconfirm "${aur[@]}"
+        else
+            warn "no AUR helper (paru/yay) — install manually: ${aur[*]}"
+        fi
+    fi
+}
+
+# ---------------------------------------------------------------- symlinks
+
+link_one() {
+    local src="$1" dst="$2"
+
+    # Already correct.
+    [[ -L "$dst" && "$(readlink -f "$dst")" == "$(readlink -f "$src")" ]] && return 0
+
+    if [[ -e "$dst" || -L "$dst" ]]; then
+        mkdir -p "$BACKUP"
+        mv "$dst" "$BACKUP/"
+        warn "backed up $(basename "$dst") -> $BACKUP/"
+    fi
+
+    mkdir -p "$(dirname "$dst")"
+    ln -s "$src" "$dst"
+    ok "$(basename "$dst")"
+}
+
+do_link() {
+    step "symlinks"
+
+    mkdir -p "$CONFIG_HOME" "$STATE_HOME/quickshell" "$HOME/Bilder/screenshots" "$HOME/Bilder/walls"
+
+    # Everything directly under config/ maps to ~/.config/<name>.
+    for entry in "$REPO"/config/*; do
+        link_one "$entry" "$CONFIG_HOME/$(basename "$entry")"
+    done
+
+    ok "re-run --link after any pull that adds a config directory"
+}
+
+# ---------------------------------------------------------------- services
+
+do_services() {
+    step "services"
+
+    enable_system() {
+        if sudo systemctl enable --now "$1" >/dev/null 2>&1; then ok "$1"
+        else warn "could not enable $1"; fi
+    }
+    enable_system NetworkManager.service
+    enable_system bluetooth.service
+    enable_system power-profiles-daemon.service
+    enable_system thermald.service
+
+    # sddm is enabled but NOT started — starting it from inside a running
+    # session kills the session you are typing in.
+    if sudo systemctl enable sddm.service >/dev/null 2>&1; then ok "sddm (enabled, not started)"
+    else warn "could not enable sddm"; fi
+
+    if systemctl --user enable --now pipewire.service pipewire-pulse.service wireplumber.service >/dev/null 2>&1
+    then ok "pipewire + wireplumber"
+    else warn "could not enable pipewire user services"; fi
+
+    # fish as the login shell, only if it is not already.
+    if [[ "$SHELL" != *fish ]] && command -v fish >/dev/null; then
+        warn "login shell is $SHELL; to switch:  chsh -s $(command -v fish)"
+    fi
+}
+
+# ---------------------------------------------------------------- theme
+
+do_theme() {
+    step "theme"
+
+    command -v matugen >/dev/null || die "matugen not installed"
+
+    local arg="${1:-}"
+    local mode scheme
+    mode="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme mode || echo wallpaper)"
+    scheme="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme scheme || echo dark)"
+
+    local source_desc
+    if [[ -n "$arg" && -f "$arg" ]]; then
+        # An explicit image: switch to wallpaper mode and remember it.
+        matugen image "$arg" --mode "$scheme"
+        echo "$arg" > "$STATE_HOME/quickshell/wallpaper"
+        source_desc="wallpaper $(basename "$arg")"
+        set_wallpaper "$arg"
+
+    elif [[ -n "$arg" && -f "$REPO/themes/$arg.toml" ]]; then
+        local seed
+        seed="$(grep -oP '^seed\s*=\s*"\K[^"]+' "$REPO/themes/$arg.toml")"
+        matugen color hex "$seed" --mode "$scheme"
+        source_desc="theme $arg (seed $seed)"
+
+    elif [[ "$mode" == "manual" ]]; then
+        local name seed
+        name="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme manual || echo catppuccin-mocha)"
+        [[ -f "$REPO/themes/$name.toml" ]] || die "no such theme: $name"
+        seed="$(grep -oP '^seed\s*=\s*"\K[^"]+' "$REPO/themes/$name.toml")"
+        matugen color hex "$seed" --mode "$scheme"
+        source_desc="theme $name (seed $seed)"
+
+    else
+        local wall
+        wall="$(cat "$STATE_HOME/quickshell/wallpaper" 2>/dev/null || true)"
+        if [[ -n "$wall" && -f "$wall" ]]; then
+            matugen image "$wall" --mode "$scheme"
+            source_desc="wallpaper $(basename "$wall")"
+            set_wallpaper "$wall"
+        else
+            # No wallpaper chosen yet. Fall back to the manual seed rather than
+            # leaving the shell with no colors.json at all.
+            local seed
+            seed="$(grep -oP '^seed\s*=\s*"\K[^"]+' "$REPO/themes/catppuccin-mocha.toml")"
+            matugen color hex "$seed" --mode "$scheme"
+            source_desc="fallback seed $seed (no wallpaper set)"
+        fi
+    fi
+
+    ok "$source_desc, $scheme"
+
+    # Push the new palette to every running kitty. Without this, open terminals
+    # keep the old colours until they are restarted.
+    if command -v kitty >/dev/null && [[ -e "$CONFIG_HOME/kitty/colors.conf" ]]; then
+        kitty @ --to unix:@mykitty set-colors --all --configured \
+            "$CONFIG_HOME/kitty/colors.conf" >/dev/null 2>&1 \
+            && ok "pushed to running kitty" || true
+    fi
+
+    # Hyprland re-reads conf/colors.lua on reload; border gradients update live.
+    command -v hyprctl >/dev/null && hyprctl reload >/dev/null 2>&1 && ok "hyprctl reload"
+}
+
+set_wallpaper() {
+    command -v hyprctl >/dev/null || return 0
+    pgrep -x hyprpaper >/dev/null || return 0
+    local fit
+    fit="$(json_get "$CONFIG_HOME/quickshell/settings.json" wallpaper fit || echo cover)"
+    # Empty monitor = fallback for every output.
+    hyprctl hyprpaper wallpaper ",$1,$fit" >/dev/null 2>&1 || true
+}
+
+# Minimal nested-key reader. python3 is a hard dependency of pacman, so it is
+# always present; jq is not.
+json_get() {
+    python3 -c "
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+    for k in sys.argv[2:]: d=d[k]
+    print(d)
+except Exception:
+    sys.exit(1)
+" "$@" 2>/dev/null
+}
+
+# ---------------------------------------------------------------- main
+
+main() {
+    local do_all=1 pkgs=0 link=0 svc=0 theme=0 theme_arg=""
+
+    while (( $# )); do
+        case "$1" in
+            --packages) do_all=0; pkgs=1 ;;
+            --link)     do_all=0; link=1 ;;
+            --services) do_all=0; svc=1 ;;
+            --theme)    do_all=0; theme=1
+                        [[ ${2:-} && ${2:-} != --* ]] && { theme_arg="$2"; shift; } ;;
+            -h|--help)  sed -n '2,14p' "$0"; exit 0 ;;
+            *)          die "unknown flag: $1" ;;
+        esac
+        shift
+    done
+
+    preflight
+    (( do_all || pkgs ))  && do_packages
+    (( do_all || link ))  && do_link
+    (( do_all || svc ))   && do_services
+    (( do_all || theme )) && do_theme "$theme_arg"
+
+    step "done"
+    if (( do_all )); then
+        cat <<'EOF'
+  Next:
+    1. chsh -s /usr/bin/fish        if you want fish as the login shell
+    2. log out, pick Hyprland in SDDM, log back in
+    3. ./install/check.sh           validates the RUNNING session
+
+  Autostart only fires on login. `hyprctl reload` will not start the shell.
+EOF
+    fi
+}
+
+main "$@"

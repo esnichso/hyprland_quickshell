@@ -1,0 +1,47 @@
+{
+  "bar": {
+    "height": 46,
+    "islandHeight": 34,
+    "radius": 14,
+    "sideMargin": 10,
+    "topMargin": 6,
+    "islandPadding": 11
+  },
+  "notch": {
+    "restWidth": 168,
+    "osdWidth": 240,
+    "toastWidth": 400,
+    "toastHeight": 76,
+    "panelWidth": 440,
+    "panelHeight": 560,
+    "toastMs": 5000,
+    "osdMs": 1600
+  },
+  "motion": {
+    "enabled": true,
+    "expandMs": 260,
+    "collapseMs": 180,
+    "fadeMs": 120,
+    "fadeDelayMs": 60
+  },
+  "clock": {
+    "timeFormat": "HH:mm",
+    "dateFormat": "ddd d. MMM"
+  },
+  "theme": {
+    "mode": "wallpaper",
+    "manual": "catppuccin-mocha",
+    "scheme": "dark"
+  },
+  "wallpaper": {
+    "dir": "~/Bilder/walls",
+    "fit": "cover"
+  },
+  "modules": {
+    "workspaces": true,
+    "tray": true,
+    "bluetooth": true,
+    "notchMedia": false
+  },
+  "dnd": false
+}

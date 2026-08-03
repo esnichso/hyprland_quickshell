@@ -8,7 +8,14 @@ that morphs into notifications, OSDs and panels, and collapses back. Colour
 comes either from the wallpaper or from a theme you pick — your choice, at
 runtime.
 
-**Status: design complete, nothing built.** These documents are the spec.
+**Status: Phase 1 built, untested.** The compositor config, the install and
+check scripts, the theming pipeline and a minimal bar exist. None of it has
+ever run — it was written on an Ubuntu host where Hyprland and QuickShell
+cannot be installed. The first CachyOS VM boot is the first execution.
+
+What works on paper and needs proving: session starts, bar draws three islands,
+clock ticks, workspaces respond, battery reads. What is deliberately absent:
+the notch's OSD/toast/dashboard content, and every panel. Those are Phase 2.
 
 ---
 
@@ -39,7 +46,7 @@ runtime.
 | Config | `settings.json` with live reload — QML holds no magic numbers |
 | Terminal / shell | kitty + fish + starship |
 | Lock / idle | hyprlock + hypridle (deliberately *not* QuickShell) |
-| Wallpaper | swww, driven from a QuickShell picker |
+| Wallpaper | hyprpaper, driven from a QuickShell picker over `hyprctl` |
 | Scripts | Exactly two: `install.sh`, `check.sh` |
 
 ---

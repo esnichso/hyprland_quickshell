@@ -1,0 +1,56 @@
+# matugen — the one place a colour is generated.
+#
+# Both theming modes render through these templates:
+#   mode "wallpaper"  ->  matugen image <path>
+#   mode "manual"     ->  matugen color hex <seed from themes/*.toml>
+#
+# There is exactly one code path from "a palette exists" to "everything is
+# themed". Adding a themed target means adding a template here, never a second
+# mechanism.
+#
+# Every output_path below is gitignored: config/ is symlinked into ~/.config,
+# so generated files would otherwise leave the working tree permanently dirty.
+
+[config]
+# Wallpaper setting is NOT delegated to matugen. hyprpaper is driven from the
+# shell's picker so the shell knows what the current wallpaper is; letting
+# matugen also set it would give two writers and no single source of truth.
+reload_apps = false
+
+# --- the shell -------------------------------------------------------------
+[templates.quickshell]
+input_path = "~/.config/matugen/templates/colors.json"
+output_path = "~/.config/quickshell/colors.json"
+
+# --- terminal --------------------------------------------------------------
+# kitty is included via `include colors.conf` in kitty.conf, and the palette is
+# pushed to every RUNNING instance over its socket by install.sh --theme.
+[templates.kitty]
+input_path = "~/.config/matugen/templates/kitty-colors.conf"
+output_path = "~/.config/kitty/colors.conf"
+
+# --- compositor ------------------------------------------------------------
+# Border gradient. conf/looks.lua requires this and falls back if absent.
+[templates.hyprland]
+input_path = "~/.config/matugen/templates/hypr-colors.lua"
+output_path = "~/.config/hypr/conf/colors.lua"
+
+# --- lock screen -----------------------------------------------------------
+[templates.hyprlock]
+input_path = "~/.config/matugen/templates/hyprlock-colors.conf"
+output_path = "~/.config/hypr/hyprlock-colors.conf"
+
+# --- GTK -------------------------------------------------------------------
+# Imported by gtk.css in both GTK3 and GTK4. Applies on next app launch.
+[templates.gtk3]
+input_path = "~/.config/matugen/templates/gtk-colors.css"
+output_path = "~/.config/gtk-3.0/colors.css"
+
+[templates.gtk4]
+input_path = "~/.config/matugen/templates/gtk-colors.css"
+output_path = "~/.config/gtk-4.0/colors.css"
+
+# --- Qt --------------------------------------------------------------------
+[templates.qt6ct]
+input_path = "~/.config/matugen/templates/qt6ct-colors.conf"
+output_path = "~/.config/qt6ct/colors/hypersetup.conf"

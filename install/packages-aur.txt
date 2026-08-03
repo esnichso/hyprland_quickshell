@@ -1,0 +1,7 @@
+# AUR packages. Kept to a minimum on purpose: AUR packages rebuild locally and
+# can break on a Qt or Hyprland bump, so nothing in the session path lives here.
+#
+# Exactly one entry. If this list grows, ask whether the thing really needs to
+# be AUR before adding it.
+
+zen-browser-bin

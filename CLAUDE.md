@@ -8,9 +8,12 @@ A Hyprland desktop for **CachyOS** on a **ThinkPad E16 Gen 3**, where the whole
 shell layer — bar, notifications, OSD, launcher, control centre, power menu — is
 a single **QuickShell** (QML) process.
 
-**Current state: design only. No configuration has been written yet.** The five
-documents below are the specification; `docs/hyprland/` is a wiki snapshot.
-There is no `config/`, no `install/`, no git repo, and no build system.
+**Current state: Phase 1 written, never executed.** `config/` and `install/`
+exist; nothing in them has run. The dev host is Ubuntu, where Hyprland and
+QuickShell cannot be installed, so the first CachyOS VM boot is the first time
+any of this executes. Treat every file as unproven.
+
+The documents below are the specification; `docs/hyprland/` is a wiki snapshot.
 
 | Document | Read it before |
 | --- | --- |
@@ -76,7 +79,7 @@ redoing.
 
 ## Commands
 
-**Planned, not yet written** — `install/` does not exist:
+These exist and are executable, but have never been run:
 
 ```bash
 ./install/install.sh              # packages → symlinks → services → theme
@@ -86,11 +89,18 @@ redoing.
 ./install/check.sh                # validate the RUNNING session, not the files
 ```
 
-`check.sh` is specified in `PACKAGES.md`. Its distinguishing property, carried
-from v1's `doctor.sh`, is that it inspects the live session — services, D-Bus
-ownership, resolved colours, `hyprctl binds` — rather than parsing config files.
-That is what caught real bugs; a file-only checker mostly confirms that files
-exist.
+`check.sh` inspects the live session — services, D-Bus ownership, layer
+namespaces, resolved colour contrast, named keybinds — rather than parsing
+config files. A file-only checker mostly confirms that files exist, which they
+always do.
+
+**What can and cannot be verified on the Ubuntu dev host:** bash, JSON and TOML
+parse locally. Lua parses via `luaparser` in a venv (`luac` is not installed).
+**QML cannot be checked at all** — `/usr/bin/qmllint` is a qtchooser stub
+pointing at a Qt5 binary that does not exist, and it fails identically on valid
+and invalid input, so its verdict means nothing. This is the exact trap
+described under "Verify your own work" below. QML correctness is established by
+running it in the VM, and nowhere else.
 
 **Available on a real session:**
 
@@ -102,7 +112,7 @@ hyprctl layers                    # real layer namespaces — do not write these
 hyprctl monitors                  # actual mode and scale
 wev                               # what a key really emits (essential on `de`)
 matugen image <path>              # regenerate the palette
-pacman -Si quickshell matugen hyprland swww
+pacman -Si quickshell matugen hyprland hyprpaper
 ```
 
 There is no test suite, no linter config, and no build step. QML is validated by

@@ -351,11 +351,10 @@ while visible and **not polled at all when hidden**.
 
 560×480. Two tabs.
 
-**Wallpapers:** a thumbnail grid of `settings.wallpaper.dir`. Click to apply.
-`swww img --transition-type grow --transition-pos <cursor>` runs the
-transition from wherever you clicked, which is a small thing that feels
-disproportionately good. Thumbnails are cached to
-`~/.cache/quickshell/wallthumbs/`.
+**Wallpapers:** a thumbnail grid of `settings.wallpaper.dir`. Click to apply,
+which runs `hyprctl hyprpaper wallpaper "<monitor>,<path>,cover"`. Thumbnails
+are cached to `~/.cache/quickshell/wallthumbs/`. There is no transition —
+hyprpaper does not do them (see §8).
 
 **Theme:** the mode switch you asked for.
 
@@ -381,11 +380,25 @@ Each swatch row previews the theme's actual `primary`, `surface` and
 
 ## 8. Wallpaper daemon
 
-`swww`, not hyprpaper. You wanted the wallpaper to live outside QuickShell but
-be driven from it — `swww` is a daemon with a socket and a CLI, so the picker
-just runs `swww img`. hyprpaper requires preloading every image into VRAM
-before it can show it, which makes a picker grid awkward. `swww` also gives
-the transitions for free.
+`hyprpaper`. You wanted the wallpaper to live outside QuickShell but be driven
+from it, and hyprpaper is a daemon with IPC, so the picker just runs one
+command:
+
+```sh
+hyprctl hyprpaper wallpaper "eDP-1,/path/to/wall.jpg,cover"
+```
+
+**This spec originally said `swww`, which was wrong twice over.** `swww` is in
+neither the official repos nor the AUR — it no longer exists as a package. And
+the reason given for preferring it, that hyprpaper needs every image preloaded
+into VRAM first, is no longer true: current hyprpaper takes a path directly,
+and the wiki notes `preload`/`unload` may not exist in your installed version
+at all. Check `hyprctl hyprpaper --help` before writing IPC against it.
+
+What is genuinely lost: hyprpaper has no transitions. A wallpaper change is a
+hard cut. If that turns out to matter, the fallback is drawing the wallpaper on
+a QuickShell background layer and cross-fading there — but that moves the
+wallpaper back inside the shell, which you explicitly didn't want.
 
 ---
 

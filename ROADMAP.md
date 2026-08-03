@@ -17,7 +17,7 @@ Before writing a line of config. Any of these being false changes the plan.
 - [ ] `pacman -Si hyprland` reports **≥ 0.55** — otherwise the entire
       `config/hypr/` tree needs hyprlang syntax, not Lua
 - [ ] `pacman -Si quickshell` reports **0.3.0+** from `extra`
-- [ ] `pacman -Si matugen swww` both resolve from `extra`
+- [ ] `pacman -Si matugen hyprpaper` both resolve from `extra`
 - [ ] Confirm the panel's real mode: `2560x1600@?Hz` and which scale looks
       right — 1.25 is what Ubuntu picked, but Hyprland's fractional scaling
       differs from GNOME's

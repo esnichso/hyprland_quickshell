@@ -1,0 +1,95 @@
+# Official repo packages. See PACKAGES.md for why each one is here.
+# Every name verified against the live Arch API on 2026-08-03.
+# Lines starting with # and blank lines are ignored.
+
+# --- core session ---
+hyprland
+uwsm
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+qt6-wayland
+qt5-wayland
+polkit
+hyprpolkitagent
+xorg-xwayland
+pipewire
+pipewire-alsa
+pipewire-pulse
+pipewire-jack
+wireplumber
+sddm
+xdg-user-dirs
+gnome-keyring
+libsecret
+
+# --- the shell ---
+quickshell
+hyprlock
+hypridle
+hyprshutdown
+hyprpaper
+hyprsunset
+
+# --- theming ---
+matugen
+qt6ct
+nwg-look
+papirus-icon-theme
+
+# --- hardware: Intel Arrow Lake / ThinkPad E16 Gen 3 ---
+mesa
+vulkan-intel
+intel-media-driver
+libva-utils
+sof-firmware
+brightnessctl
+power-profiles-daemon
+upower
+networkmanager
+bluez
+bluez-utils
+fprintd
+thermald
+
+# --- utilities bound to keys ---
+grim
+slurp
+satty
+wl-clipboard
+cliphist
+wl-clip-persist
+wf-recorder
+hyprpicker
+playerctl
+wev
+
+# --- applications ---
+kitty
+fish
+starship
+thunar
+thunar-volman
+tumbler
+ffmpegthumbnailer
+gvfs
+udiskie
+btop
+fastfetch
+mpv
+imv
+
+# --- shell tooling ---
+fzf
+zoxide
+eza
+bat
+fd
+ripgrep
+
+# --- fonts ---
+inter-font
+ttf-jetbrains-mono-nerd
+ttf-nerd-fonts-symbols
+noto-fonts
+noto-fonts-cjk
+noto-fonts-emoji

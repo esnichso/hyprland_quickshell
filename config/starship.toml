@@ -1,0 +1,50 @@
+# starship — prompt.
+#
+# Deliberately not themed from matugen. The prompt uses the terminal's own
+# ANSI colours, which kitty-colors.conf already derives from the palette, so it
+# follows the wallpaper for free and there is one less generated file.
+
+add_newline = true
+command_timeout = 800
+
+format = """
+$directory$git_branch$git_status$python$nodejs$rust$cmd_duration
+$character"""
+
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
+vimcmd_symbol = "[❮](bold green)"
+
+[directory]
+style = "bold blue"
+truncation_length = 3
+truncate_to_repo = true
+read_only = " ro"
+
+[git_branch]
+symbol = " "
+style = "purple"
+format = "on [$symbol$branch]($style) "
+
+[git_status]
+style = "yellow"
+format = '([$all_status$ahead_behind]($style) )'
+
+[cmd_duration]
+# Only mention it when it was long enough that you walked away.
+min_time = 2000
+style = "dimmed white"
+format = "took [$duration]($style) "
+
+[python]
+symbol = " "
+format = 'via [$symbol$version]($style) '
+
+[nodejs]
+symbol = " "
+format = 'via [$symbol$version]($style) '
+
+[rust]
+symbol = " "
+format = 'via [$symbol$version]($style) '

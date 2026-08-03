@@ -155,7 +155,7 @@ Two modes, one pipeline, chosen at runtime. This is the switch you asked for.
 
 ### Mode `wallpaper`
 
-You change the wallpaper; the desktop changes colour. `swww img` sets it, and
+You change the wallpaper; the desktop changes colour. `hyprctl hyprpaper` sets it, and
 the same action runs `matugen image <path>`, which regenerates every target
 above. QuickShell watches `colors.json` and re-themes with no restart. Kitty
 gets the new palette pushed over its socket to every running instance. GTK and

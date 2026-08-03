@@ -1,0 +1,12 @@
+# A manual theme: colour comes from here instead of from the wallpaper.
+#
+# `seed` is fed to `matugen color hex`, which generates the full Material 3
+# role set around it. That gives a coherent 40-role palette from one value.
+#
+# PHASE 1 LIMITATION: only `seed` is used. DESIGN.md §4 describes a [roles]
+# table merged on top for exact fidelity on the roles you actually notice
+# (base, surface, text). That merge lands in Phase 2f — until then a manual
+# theme is "Catppuccin-flavoured", not literally Catppuccin.
+name = "Catppuccin Mocha"
+seed = "#cba6f7"
+scheme = "dark"
