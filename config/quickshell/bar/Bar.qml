@@ -19,8 +19,6 @@ PanelWindow {
         right: true
     }
 
-    implicitHeight: Config.bar.height
-
     // Fixed forever. This must never animate — the notch overlays content when
     // it expands rather than pushing it, because reflowing every window on
     // every notification is intolerable (DESIGN.md §3).
@@ -36,11 +34,19 @@ PanelWindow {
 
     // Only the three islands take clicks. Without this the transparent gaps
     // between them would swallow clicks meant for the window underneath.
+    //
+    // The notch's region grows with it, so an expanded dashboard is clickable
+    // for its whole area without the bar ever becoming a full-width blocker.
     mask: Region {
         Region { item: workspaces }
         Region { item: notch }
         Region { item: status }
     }
+
+    // The bar surface is only as tall as the bar, but the dashboard grows
+    // beyond it. Without extending the window, the panel is clipped at 46px.
+    implicitHeight: Math.max(Config.bar.height,
+                             notch.y + notch.implicitHeight + Config.bar.topMargin)
 
     WorkspaceIsland {
         id: workspaces
@@ -56,6 +62,7 @@ PanelWindow {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.topMargin: Config.bar.topMargin
+        hostWindow: root
     }
 
     StatusIsland {

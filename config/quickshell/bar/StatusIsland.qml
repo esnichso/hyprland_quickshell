@@ -10,9 +10,9 @@
 import QtQuick
 import Quickshell
 import Quickshell.Services.UPower
-import Quickshell.Services.Pipewire
 import Quickshell.Services.SystemTray
 import "root:/"
+import "root:/services"
 import "root:/widgets"
 
 IslandSurface {
@@ -45,44 +45,22 @@ IslandSurface {
     readonly property bool batteryLow: hasBattery && !charging && batteryPct <= 20
     readonly property bool batteryCritical: hasBattery && !charging && batteryPct <= 10
 
-    readonly property var sink: Pipewire.defaultAudioSink
-    readonly property var source: Pipewire.defaultAudioSource
-
-    readonly property bool micMuted:
-        source && source.audio && source.audio.muted
-
-    readonly property bool volMuted:
-        sink && sink.audio && sink.audio.muted
-
-    readonly property real volume:
-        sink && sink.audio ? sink.audio.volume : 0
-
-    // Bind the nodes we read, otherwise their audio properties stay unpopulated.
-    PwObjectTracker {
-        objects: [root.sink, root.source].filter(o => o)
-    }
+    // Audio comes from the Audio singleton, which owns the one PwObjectTracker
+    // in the shell. A second tracker on the same nodes is redundant work and an
+    // easy way to end up with two components disagreeing about the volume.
+    readonly property bool micMuted: Audio.micMuted
+    readonly property bool volMuted: Audio.muted
 
     // Scroll anywhere on the island adjusts the default sink, even when the
-    // volume glyph is hidden.
+    // volume glyph is hidden. The OSD appears because Audio's volume changed,
+    // not because this handler asked for it.
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.NoButton
-        onWheel: wheel => {
-            if (!root.sink || !root.sink.audio) return;
-            const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
-            root.sink.audio.volume = Math.max(0, Math.min(1, root.sink.audio.volume + step));
-        }
+        onWheel: wheel => Audio.stepVolume(wheel.angleDelta.y > 0 ? 0.05 : -0.05)
     }
 
     // ---- layout -----------------------------------------------------------
-
-    component Glyph: Text {
-        font.family: "Symbols Nerd Font"
-        font.pixelSize: 14
-        color: Theme.onSurfaceVariant
-        anchors.verticalCenter: parent ? parent.verticalCenter : undefined
-        Behavior on color { ColorAnimation { duration: Config.fadeMs } }
-    }
 
     Row {
         id: row
@@ -141,18 +119,21 @@ IslandSurface {
         // the module exists, but a half-bound network item that lies about
         // your connection is worse than one that is obviously a placeholder.
         Glyph {
+            anchors.verticalCenter: parent.verticalCenter
             text: ""   // nf-fa-wifi
             color: Theme.onSurfaceVariant
         }
 
         // --- bluetooth (conditional) ---
         Glyph {
+            anchors.verticalCenter: parent.verticalCenter
             visible: false   // Phase 2: show when the adapter is on
             text: ""   // nf-fa-bluetooth
         }
 
         // --- mic, only when muted ---
         Glyph {
+            anchors.verticalCenter: parent.verticalCenter
             visible: root.micMuted
             text: ""   // nf-fa-microphone_slash
             color: Theme.error
@@ -160,6 +141,7 @@ IslandSurface {
 
         // --- volume, only when muted ---
         Glyph {
+            anchors.verticalCenter: parent.verticalCenter
             visible: root.volMuted
             text: ""   // nf-fa-volume_off
             color: Theme.error
@@ -172,6 +154,7 @@ IslandSurface {
             anchors.verticalCenter: parent.verticalCenter
 
             Glyph {
+                anchors.verticalCenter: parent.verticalCenter
                 text: root.charging ? "" : ""   // bolt : battery
                 color: root.batteryCritical ? Theme.error
                      : root.batteryLow ? Theme.error

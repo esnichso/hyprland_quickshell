@@ -1,45 +1,45 @@
 // Centre island — the notch.
 //
-// PHASE 1: the state machine and its geometry animation are here and working,
-// but only the `rest` state has content. OSD, toast and dashboard are wired
-// into the resolver and sized correctly; their content arrives in Phase 2.
+// A state machine with animated geometry. Six states, one priority order, one
+// object. Everything the shell wants to tell you arrives through here and
+// leaves the same way.
 //
-// The machine is built first on purpose (ROADMAP §2c). A notch is a state
-// machine with animated geometry, and the failure mode is one that looks right
-// in screenshots and feels wrong in use — much cheaper to get right now than
-// to retrofit under finished panels.
+// A new event RETARGETS the running animation from wherever it is; it never
+// queues and never restarts. Every animated property uses a Behavior, which
+// makes that free — anything hand-driving an animation here is a bug.
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import "root:/"
+import "root:/services"
 import "root:/widgets"
+import "root:/bar/notch"
 
 IslandSurface {
     id: root
 
-    // ---- state ------------------------------------------------------------
-    // Priority order, high to low. A new event RETARGETS the running animation
-    // from wherever it is; it never queues and never restarts. Every animated
-    // property below uses a Behavior, which makes that free.
+    // The window this notch lives in, so the focus grab has something to hold.
+    property var hostWindow: null
 
-    property bool dashOpen: false
-    property bool criticalActive: false
-    property bool osdActive: false
-    property bool toastActive: false
+    // Panel state is a singleton: the keybind IPC, this click handler and the
+    // panels themselves all need to reach it.
+    readonly property bool dashOpen: Panels.dash
 
+    // ---- state resolution -------------------------------------------------
     readonly property string state_:
-          dashOpen       ? "dash"
-        : criticalActive ? "critical"
-        : osdActive      ? "osd"
-        : toastActive    ? "toast"
+          dashOpen                                   ? "dash"
+        : Notifs.popup !== null && Notifs.critical    ? "critical"
+        : Osd.active                                  ? "osd"
+        : Notifs.popup !== null                       ? "toast"
         : "rest"
 
     readonly property var geometry: ({
-        rest:     { w: Config.notch.restWidth,   h: Config.bar.islandHeight, r: Config.bar.radius },
-        osd:      { w: Config.notch.osdWidth,    h: Config.bar.islandHeight, r: Config.bar.radius },
-        toast:    { w: Config.notch.toastWidth,  h: Config.notch.toastHeight, r: 18 },
-        critical: { w: Config.notch.toastWidth,  h: Config.notch.toastHeight, r: 18 },
-        dash:     { w: Config.notch.panelWidth,  h: Config.notch.panelHeight, r: 20 }
+        rest:     { w: Config.notch.restWidth,  h: Config.bar.islandHeight,  r: Config.bar.radius },
+        osd:      { w: Config.notch.osdWidth,   h: Config.bar.islandHeight,  r: Config.bar.radius },
+        toast:    { w: Config.notch.toastWidth, h: Config.notch.toastHeight, r: 18 },
+        critical: { w: Config.notch.toastWidth, h: Config.notch.toastHeight, r: 18 },
+        dash:     { w: Config.notch.panelWidth, h: Config.notch.panelHeight, r: 20 }
     })
 
     readonly property var geo: geometry[state_]
@@ -48,10 +48,8 @@ IslandSurface {
     implicitHeight: geo.h
     radius: geo.r
 
-    // Expanding is slower than collapsing: things that arrive should be
-    // noticed, things that leave should get out of the way. Direction is
-    // measured by area so a toast -> osd transition (wider but much shorter)
-    // is correctly treated as a collapse.
+    // Direction is measured by AREA, so toast -> osd (wider but far shorter)
+    // is correctly treated as a collapse and gets the faster curve.
     property real lastArea: geo.w * geo.h
     readonly property bool collapsing: geo.w * geo.h < lastArea
     onGeoChanged: lastArea = geo.w * geo.h
@@ -69,41 +67,21 @@ IslandSurface {
         NumberAnimation { duration: root.morphMs; easing.type: root.morphEasing }
     }
 
-    // Content is clipped while the geometry moves. This is what makes it read
-    // as a morph rather than a resize.
+    // Content is clipped while geometry moves — this is what makes it read as a
+    // morph rather than a resize.
     clip: true
 
-    // ---- timers -----------------------------------------------------------
-
-    Timer {
-        id: osdTimer
-        interval: Config.notch.osdMs
-        onTriggered: root.osdActive = false
-    }
-
+    // Toast lifetime. Critical notifications stay until acted on.
     Timer {
         id: toastTimer
         interval: Config.notch.toastMs
-        onTriggered: root.toastActive = false
+        running: Notifs.popup !== null && !Notifs.critical
+        onTriggered: Notifs.hidePopup()
     }
 
-    // Called by the OSD sources in Phase 2. Restarting the timer on every
-    // keypress is what keeps the OSD open while you hold the volume key.
-    function showOsd() {
-        osdActive = true;
-        osdTimer.restart();
-    }
-
-    function showToast(critical) {
-        if (critical) criticalActive = true;
-        else toastActive = true;
-        toastTimer.restart();
-    }
-
-    // ---- content ----------------------------------------------------------
-    // Every pane is absolutely positioned and cross-fades. The fade starts
-    // 60ms after the geometry does, so the old content is gone before the new
-    // shape has settled.
+    // ---- panes ------------------------------------------------------------
+    // Each fades in 60ms after the geometry starts moving. Without that offset
+    // the old text is still legible while the shape changes underneath it.
 
     component Pane: Item {
         anchors.fill: parent
@@ -111,10 +89,6 @@ IslandSurface {
         readonly property bool current: root.state_ === forState
         opacity: current ? 1 : 0
         visible: opacity > 0
-        // The pause is the point: geometry starts moving, and only 60ms later
-        // does the content begin to cross-fade. Without the offset the old
-        // text is still legible while the shape changes underneath it, which
-        // reads as a resize instead of a morph.
         Behavior on opacity {
             SequentialAnimation {
                 PauseAnimation { duration: Config.fadeDelayMs }
@@ -123,7 +97,6 @@ IslandSurface {
         }
     }
 
-    // rest — the clock
     Pane {
         forState: "rest"
 
@@ -138,9 +111,8 @@ IslandSurface {
                 font.family: "Inter"
                 font.pixelSize: 13
                 font.weight: Font.Medium
-                // Tabular figures are not optional on a centred clock: with
-                // proportional digits "14:11" is narrower than "14:00" and the
-                // whole island twitches every minute.
+                // Without tabular figures "14:11" is narrower than "14:00" and
+                // a centred clock twitches every minute.
                 font.features: ({ "tnum": 1 })
             }
 
@@ -152,80 +124,78 @@ IslandSurface {
                 font.pixelSize: 11
             }
 
-            // Do Not Disturb marker, so a suppressed notification stream is
-            // never a mystery.
-            Text {
+            Glyph {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: Config.dnd
-                text: "☾"
-                color: Theme.onSurfaceVariant
-                font.pixelSize: 12
+                text: ""            // moon
+                font.pixelSize: 11
             }
 
-            // Shown until matugen has generated a palette — otherwise "my
-            // colours look wrong" is indistinguishable from a theming bug.
-            Text {
+            // Unread count when notifications arrived while DND was on, or
+            // while you were away.
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: Notifs.count > 0
+                width: unread.width + 10; height: 15; radius: 8
+                color: Qt.alpha(Theme.primary, 0.22)
+                Text {
+                    id: unread
+                    anchors.centerIn: parent
+                    text: Notifs.count
+                    color: Theme.primary
+                    font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9
+                }
+            }
+
+            // Shown until matugen has produced a palette, so "my colours look
+            // wrong" is diagnosable instead of mysterious.
+            Glyph {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: !Theme.generated
-                text: "○"
+                text: ""
+                font.pixelSize: 9
                 color: Theme.error
-                font.pixelSize: 10
             }
         }
     }
 
-    // osd / toast / dash — sized and wired, content lands in Phase 2.
-    Pane {
-        forState: "osd"
-        Text {
-            anchors.centerIn: parent
-            text: "osd"
-            color: Theme.onSurfaceVariant
-            font.family: "Inter"; font.pixelSize: 12
-        }
-    }
-
-    Pane {
-        forState: "toast"
-        Text {
-            anchors.centerIn: parent
-            text: "notification"
-            color: Theme.onSurfaceVariant
-            font.family: "Inter"; font.pixelSize: 12
-        }
-    }
-
-    Pane {
-        forState: "critical"
-        Text {
-            anchors.centerIn: parent
-            text: "critical"
-            color: Theme.error
-            font.family: "Inter"; font.pixelSize: 12
-        }
-    }
-
-    Pane {
-        forState: "dash"
-        Text {
-            anchors.centerIn: parent
-            text: "dashboard"
-            color: Theme.onSurfaceVariant
-            font.family: "Inter"; font.pixelSize: 12
-        }
-    }
+    Pane { forState: "osd";      OsdPane   { visible: parent.current } }
+    Pane { forState: "toast";    ToastPane { visible: parent.current } }
+    Pane { forState: "critical"; ToastPane { visible: parent.current } }
+    Pane { forState: "dash";     DashPane  { visible: parent.current } }
 
     SystemClock {
         id: clock
-        // Minute precision, not seconds: the clock shows HH:mm, so waking the
-        // process 60 times a minute to redraw the same glyphs is pure battery
-        // cost.
+        // The clock shows HH:mm. Waking 60 times a minute to redraw the same
+        // glyphs is pure battery cost.
         precision: SystemClock.Minutes
     }
 
     MouseArea {
         anchors.fill: parent
+        acceptedButtons: Qt.LeftButton
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.dashOpen = !root.dashOpen
+        // Only the collapsed states are a click target for opening the
+        // dashboard; once open, clicks belong to its content.
+        enabled: !root.dashOpen
+        onClicked: Panels.toggle("dashboard")
+    }
+
+    // Click anywhere outside the bar to close the dashboard. Without this the
+    // only way out is the keybind, because the bar's input mask means stray
+    // clicks never reach the shell at all.
+    HyprlandFocusGrab {
+        id: grab
+        windows: root.hostWindow ? [root.hostWindow] : []
+        active: root.dashOpen
+        onCleared: Panels.closeAll()
+    }
+
+    Connections {
+        target: Notifs
+        function onPopupChanged() {
+            // A critical notification takes the notch even from the dashboard.
+            if (Notifs.critical) Panels.closeAll();
+        }
     }
 }

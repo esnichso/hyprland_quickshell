@@ -163,13 +163,23 @@ hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO
 hl.bind("XF86AudioMute",        hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),     hw)
 hl.bind("XF86AudioMicMute",     hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"),   hw)
 
-hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd("brightnessctl set 5%+"), hw)
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl set 5%-"), hw)
+-- Brightness tells the shell it changed. Volume does not need to: the shell
+-- watches PipeWire directly and reacts to any change, whoever made it. sysfs
+-- has no equivalent — its change notifications are unreliable enough that
+-- watching them would work on some kernels and silently never fire on others.
+local function osd(kind) return "qs ipc call osd show " .. kind end
+
+hl.bind("XF86MonBrightnessUp",
+        hl.dsp.exec_cmd("brightnessctl set 5%+ && " .. osd("brightness")), hw)
+hl.bind("XF86MonBrightnessDown",
+        hl.dsp.exec_cmd("brightnessctl set 5%- && " .. osd("brightness")), hw)
 
 -- Keyboard backlight. METAL ONLY — a VM has no such LED, and whether these
 -- keysyms are even emitted on the E16 Gen 3 is unverified. Check with `wev`.
-hl.bind("XF86KbdBrightnessUp",   hl.dsp.exec_cmd("brightnessctl -d '*kbd_backlight' set +1"), hw)
-hl.bind("XF86KbdBrightnessDown", hl.dsp.exec_cmd("brightnessctl -d '*kbd_backlight' set 1-"), hw)
+hl.bind("XF86KbdBrightnessUp",
+        hl.dsp.exec_cmd("brightnessctl -d '*kbd_backlight' set +1 && " .. osd("keyboard")), hw)
+hl.bind("XF86KbdBrightnessDown",
+        hl.dsp.exec_cmd("brightnessctl -d '*kbd_backlight' set 1- && " .. osd("keyboard")), hw)
 
 hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd("playerctl play-pause"), hw)
 hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"),       hw)

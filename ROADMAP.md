@@ -78,9 +78,19 @@ second notification mid-expansion, open the dashboard during a toast. This is
 where a naive implementation falls apart, and it's much cheaper to get right
 now than to retrofit.
 
-### 2d — Notifications and OSD
-- `NotificationServer`, toasts, history model, DND
-- OSD for volume, mic, brightness, kbd backlight, caps
+### 2d — Notifications and OSD  ✅ built, untested
+- `NotificationServer`, toasts, history, DND
+- OSD for volume, mic, brightness, kbd backlight
+- Dashboard: media (MPRIS), calendar, notification list
+- `HyprlandFocusGrab` so clicking away closes the dashboard
+
+Volume/mic OSDs are **reactive** — the shell watches PipeWire, so any change
+shows feedback regardless of what caused it. Brightness is **pushed** by the
+keybind over IPC, because sysfs change notification is unreliable enough that
+watching it would work on some kernels and silently never fire on others.
+
+Caps/Num Lock OSD is not built: it needs a keyboard-state source that is not
+obviously available, and it is the least valuable of the five.
 
 ### 2e — Panels
 In descending order of daily value:
