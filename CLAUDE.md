@@ -480,6 +480,61 @@ that resizes — were about something not written down. Reading the diff cannot
 find them. When a type has a default that changes behaviour (exclusion, focus,
 stacking, sizing), set it explicitly even when the default happens to be right.
 
+## Debugging what you cannot run
+
+The workflow section says you cannot test any of this locally. That applies to
+**diagnosis** as much as to building, and it is the harder half to remember: the
+temptation is to substitute a protocol document for an observation. Fetched docs
+describe what a mechanism is *for*. They do not tell you what your specific
+composition of mechanisms is *doing*.
+
+**The user at the VM is the instrument. Use them deliberately.**
+
+Escape-closes-the-dashboard cost two broken builds and a revert because this
+went wrong. Attempt 1 added a keyboard-catching surface; the dashboard flashed
+open and closed. I inferred a cause and shipped attempt 2 without asking a
+single question; the dashboard stopped opening at all. The reverting was right;
+the guessing was not. What finally resolved it was one sentence the user
+volunteered — *"the menu captures the keyboard, Escape just doesn't close it"* —
+which said the keys were already reaching the surface and the bug was one layer
+in. A question would have got that before attempt 1.
+
+Four rules, in the order they would have helped:
+
+**Inventory the mechanisms before adding one.** Grep the file you are about to
+edit for whatever already touches the concern. `Notch.qml` held a
+`HyprlandFocusGrab` doing the exact focus routing that was needed; it was found
+*after* the replacement was already written and shipped. Ask "what already
+handles this, and what is it already doing?" before "what should I add?".
+
+**After ONE failed fix in the VM, stop shipping and ask.** Not "does it work
+now" — a specific observation that discriminates between the hypotheses. The
+second guess is not better informed than the first unless something was
+measured in between.
+
+**Ask for the symptom at the right granularity.** "Broken" is not a symptom.
+These are all different bugs and they look identical in a bug report:
+
+| Observation | What it rules out |
+| --- | --- |
+| Flashes open, then closes | It opened. Something *closed* it — look for a dismiss path, not a create path. |
+| Never appears at all | Creation or visibility, not dismissal. |
+| Appears, but a key does nothing | The surface has the input; routing *inside* the window is broken. |
+| Appears, and the app behind still takes the key | The surface never got the input at all. |
+
+The last two differ by one question — *can you still type into the window
+behind it?* — and they have nothing in common as bugs.
+
+**Never escalate complexity on an unverified hypothesis.** Attempt 2 was
+strictly more elaborate than attempt 1 (always-mapped surface, grab whitelist,
+a removed screen binding) and it was built on a cause nobody had confirmed. When
+a fix fails, the next move is to *reduce and measure*, not to add. The fix that
+worked was smaller than either attempt: no new surface at all.
+
+**Revert to working first, then investigate.** Shipping the revert on its own,
+with no speculative fix bundled in, was the one part of this that went right. A
+broken desktop the user has to live with costs more than a round trip.
+
 ## User preferences
 
 - **Flag guesses explicitly.** When something is inferred rather than verified,
