@@ -351,6 +351,15 @@ accepting no pointer events at all (`mask: Region {}`). That is how `Escape`
 closes a panel drawn inside the bar without making the bar itself focusable.
 Only one surface may ask for `Exclusive` at a time; two is a race.
 
+**`HyprlandFocusGrab` dismisses on a focus change to any surface outside its
+window list — including one of your own.** The dashboard's grab listed only the
+bar, so the moment a keyboard-catching surface took focus, the grab cleared and
+closed the panel: it flashed open and vanished, from the keybind and from a
+click alike. Adding a focus mechanism next to an existing grab means **adding
+its window to that grab**, and mapping it once up front rather than at the same
+instant the grab activates — the grab commits its surface list when it becomes
+active, so a surface that appears in the same turn may not be in it.
+
 **Nerd Font glyphs vanish in transit, and nothing complains.** They live in the
 Unicode private use area. A terminal renders them as nothing, `cat` and the file
 viewer show nothing, and a heredoc or a rewriting tool can drop them silently —

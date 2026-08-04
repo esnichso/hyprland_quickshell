@@ -190,9 +190,19 @@ IslandSurface {
     // Click anywhere outside the bar to close the dashboard. Without this the
     // only way out is the keybind, because the bar's input mask means stray
     // clicks never reach the shell at all.
+    //
+    // PanelKeys must be in this list. The grab clears on a focus change to ANY
+    // surface outside it, and PanelKeys takes the keyboard the instant a panel
+    // opens — so leaving it out made the dashboard close itself the moment it
+    // appeared, which read as the panel flashing and vanishing.
     HyprlandFocusGrab {
         id: grab
-        windows: root.hostWindow ? [root.hostWindow] : []
+        windows: {
+            const w = [];
+            if (root.hostWindow) w.push(root.hostWindow);
+            if (Panels.keyWindow) w.push(Panels.keyWindow);
+            return w;
+        }
         active: root.dashOpen
         onCleared: Panels.closeAll()
     }

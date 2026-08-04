@@ -44,6 +44,14 @@ Singleton {
     readonly property bool anyOpen:
         dash || launcher || control || power || sysmon || wallpaper
 
+    // PanelKeys registers itself here so a focus grab can whitelist it.
+    //
+    // A HyprlandFocusGrab dismisses itself the moment focus moves to a surface
+    // outside its window list — including the shell's own keyboard catcher. Any
+    // future panel that opens a focus grab must include this window, or it will
+    // close itself as soon as Escape becomes possible.
+    property var keyWindow: null
+
     readonly property var known: ["dash", "launcher", "control", "power", "sysmon", "wallpaper"]
 
     // The text the launcher opens with. SUPER+V and SUPER+. are the launcher in

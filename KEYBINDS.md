@@ -60,8 +60,10 @@ The whole point of the shell being one process is that every panel has a key.
 
 `Escape` is **not** a compositor bind — it could not be, or it would be
 swallowed before every application that needs it. It is handled by
-`PanelKeys.qml`, a one-pixel transparent surface that exists only while a panel
-is open and holds the keyboard while it does. The consequence worth knowing:
+`PanelKeys.qml`, a one-pixel transparent surface that is always mapped, accepts
+no pointer input, and takes the keyboard only while a panel is open. It must be
+listed in any panel's `HyprlandFocusGrab`, or that grab dismisses itself the
+moment the keyboard moves. The consequence worth knowing:
 **an open panel takes keyboard focus from the window behind it.** The panel
 stays glanceable and clickable-through (DESIGN §6), but you cannot type into
 your editor while the dashboard is up. Closing it hands focus straight back.
