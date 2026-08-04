@@ -140,6 +140,11 @@ Singleton {
                 property string mode: "wallpaper"
                 property string manual: "catppuccin-mocha"
                 property string scheme: "dark"
+                // Which candidate matugen picks when an image yields several
+                // source colours. It cannot prompt when the shell launched it,
+                // and without this it aborts. One of: darkness, lightness,
+                // saturation, less-saturation, value, closest-to-fallback.
+                property string prefer: "saturation"
             }
 
             property JsonObject wallpaper: JsonObject {

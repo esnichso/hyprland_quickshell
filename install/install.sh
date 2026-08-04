@@ -212,14 +212,24 @@ do_theme() {
     command -v matugen >/dev/null || die "matugen not installed"
 
     local arg="${1:-}"
-    local mode scheme
+    local mode scheme prefer
     mode="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme mode || echo wallpaper)"
     scheme="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme scheme || echo dark)"
+
+    # matugen ABORTS on an image with several candidate source colours unless it
+    # can ask, and it cannot ask when the shell launched it — "Multiple source
+    # colors found, no preference was inputted, and a terminal was not
+    # detected". Interactive from a terminal it prompts, so this only fails when
+    # driven from the picker, which is the normal case.
+    #
+    # Valid values, from matugen's SelectionPreference enum: darkness,
+    # lightness, saturation, less-saturation, value, closest-to-fallback.
+    prefer="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme prefer || echo saturation)"
 
     local source_desc
     if [[ -n "$arg" && -f "$arg" ]]; then
         # An explicit image: switch to wallpaper mode and remember it.
-        matugen image "$arg" --mode "$scheme"
+        matugen image "$arg" --mode "$scheme" --prefer "$prefer"
         echo "$arg" > "$STATE_HOME/quickshell/wallpaper"
         source_desc="wallpaper $(basename "$arg")"
         set_wallpaper "$arg"
@@ -242,7 +252,7 @@ do_theme() {
         local wall
         wall="$(cat "$STATE_HOME/quickshell/wallpaper" 2>/dev/null || true)"
         if [[ -n "$wall" && -f "$wall" ]]; then
-            matugen image "$wall" --mode "$scheme"
+            matugen image "$wall" --mode "$scheme" --prefer "$prefer"
             source_desc="wallpaper $(basename "$wall")"
             set_wallpaper "$wall"
         else

@@ -413,6 +413,19 @@ Three consequences, all load-bearing:
 and the shipped code was already right. Fetched prose is a summary and can
 paraphrase wrongly — the dedicated type page is the authority.
 
+### Theming
+
+**`matugen image` aborts when it cannot ask a question.** An image with several
+candidate source colours makes it prompt — and when the shell launched it there
+is no terminal, so it exits with *"Multiple source colors found, no preference
+was inputted, and a terminal was not detected"*. Run by hand it works, which is
+the worst version of this: it only fails from the picker, which is the only way
+it is normally used. `--prefer` is mandatory for any non-interactive run. Its
+values come from matugen's `SelectionPreference` enum — `darkness`, `lightness`,
+`saturation`, `less-saturation`, `value`, `closest-to-fallback` — and live in
+`settings.json` as `theme.prefer`. `matugen color hex` needs none of this: one
+colour has nothing to choose between.
+
 ### Packages
 
 **Verify names and repos against live APIs every time.** `swww` was specified

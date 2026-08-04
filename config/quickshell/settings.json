@@ -54,7 +54,8 @@
   "theme": {
     "mode": "wallpaper",
     "manual": "catppuccin-mocha",
-    "scheme": "dark"
+    "scheme": "dark",
+    "prefer": "saturation"
   },
   "wallpaper": {
     "dir": "~/Bilder/walls",

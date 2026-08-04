@@ -524,6 +524,11 @@ v1's fish aliases hardcoded the dev host's path and were broken everywhere else.
 that file back. A queued write would let it render the scheme you just changed
 away from.
 
+`theme.prefer` in `settings.json` decides which candidate matugen takes when a
+wallpaper yields several. It is required, not tuning: without it matugen tries
+to prompt, finds no terminal, and fails — but only when the picker launched it,
+never when you run the same command by hand.
+
 **Deviations.** Each theme row previews its **seed** colour, not the resolved
 `primary`/`surface`/`onSurface` — those do not exist until matugen has run, and
 running it per row to draw a swatch is three processes to preview three
