@@ -80,6 +80,7 @@ name is a coin flip at login — `check.sh` fails if any of these are present.
 | `wl-clipboard` | extra | `wl-copy` / `wl-paste` |
 | `cliphist` | extra | Clipboard history store, read by the launcher |
 | `wl-clip-persist` | extra | Keeps clipboard contents after the source app closes |
+| `unicode-emoji` | extra | `emoji-test.txt` — the launcher's `:` mode reads it directly rather than shipping a generated blob |
 | `wf-recorder` | extra | Screen recording |
 | `hyprpicker` | extra | Colour picker |
 | `playerctl` | extra | Media keys |

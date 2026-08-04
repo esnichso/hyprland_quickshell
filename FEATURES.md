@@ -278,11 +278,20 @@ whole screen. No terminal UI in a floating window pretending to be a GUI.
 
 ## 4. Launcher — `SUPER+SPACE`
 
-Centred overlay, 640×420, layer `overlay`, keyboard-grabbed. Background is
-*not* dimmed (see DESIGN §6) but the launcher itself sits at 0.94 alpha
-because you need to read it.
+**Built** (Phase 2e). All six modes work; two details fall short of this spec
+and are called out below.
 
-**Source:** `Quickshell.Io` (`DesktopEntries`), `Quickshell.Hyprland`, `Process`
+Centred overlay, 640 wide and at most 420 tall, layer `overlay`, keyboard
+grabbed (`WlrKeyboardFocus.Exclusive`). Background is *not* dimmed (see DESIGN
+§6); the box uses the shared `Theme.panelBg` role rather than its own alpha, so
+it restyles with everything else.
+
+The layer surface is full-screen and fixed; the box inside it is what resizes,
+growing downward from a fixed top edge so the input never moves as you type.
+Clicking outside the box closes the launcher.
+
+**Source:** `Quickshell` (`DesktopEntries`), `Quickshell.Hyprland`,
+`Quickshell.Io` (`Process`, `FileView`)
 
 One input field. What you type is matched across modes; a prefix forces one.
 
@@ -295,16 +304,43 @@ One input field. What you type is matched across modes; a prefix forces one.
 | `;` | Clipboard history | `;` then type to filter |
 | `/` | Window switcher | `/nvim` jumps to that window |
 
-- Results are keyboard-driven: `↑`/`↓` or `Ctrl+K`/`Ctrl+J`, Enter runs, Esc closes
+`SUPER+V` and `SUPER+.` are not separate surfaces — they open this one with
+`;` or `:` already typed. Pressing one while the launcher is open *switches*
+mode rather than closing it; pressing the same bind twice closes.
+
+- Results are keyboard-driven: `↑`/`↓`, `Ctrl+K`/`Ctrl+J` or `Ctrl+P`/`Ctrl+N`,
+  Enter runs, Esc closes. Selection wraps at both ends.
 - App results show icon, name, and generic name; recently-used sort first,
-  frecency stored in `~/.local/state/quickshell/frecency.json`
+  frecency stored in `~/.local/state/quickshell/frecency.json` as a use count
+  with a 30-day half-life, decayed again at query time. It breaks ties and
+  orders the bare launcher; it never outranks a clear text match.
 - Apps launch through `uwsm app --` so they land in their own systemd scope
-  and don't die with the launcher
-- **Clipboard** reads `cliphist`; text entries preview inline, images render
-  as thumbnails. Selecting copies and closes. `Ctrl+Delete` removes an entry
-  from history.
-- **Calculator** evaluates as you type with a units-aware expression parser;
-  `=` alone shows the last result
+  and don't die with the launcher. `Terminal=true` entries get the terminal
+  prepended, because `DesktopEntry.execute()` ignores that flag.
+- **Clipboard** reads `cliphist`. Selecting copies and closes; `Ctrl+Delete`
+  (or middle/right click) removes an entry. Every `cliphist` call passes the id
+  or the list line as a **positional argument** to `sh -c`, never interpolated
+  into the script text.
+  **Deviation:** image entries show cliphist's `[[ binary data … ]]` descriptor
+  with a picture glyph, not a thumbnail. Rendering one means decoding each
+  visible row to a temp file — a process per row, and unverifiable without a
+  session. Listed in ROADMAP.md.
+- **Emoji** parses `/usr/share/unicode/emoji/emoji-test.txt` from the
+  `unicode-emoji` package, lazily on the first `:` and only the
+  `fully-qualified` sequences, plus a small built-in kaomoji and symbol list —
+  `:shrug` is a text face, not a Unicode character. Enter copies.
+- **Calculator** evaluates as you type with a hand-written recursive-descent
+  parser: `+ - * / % ^`, parentheses, unary sign, `sqrt abs floor ceil round ln
+  log exp sin cos tan asin acos atan`, and `pi e tau`. `^` is right-associative
+  and unary minus binds looser than it, so `-2^2` is `-4`. Not `eval()` — a
+  process that owns the notification daemon and the tray must not run a string
+  the user is halfway through typing.
+  **Deviation:** no unit conversion, and `=` alone shows nothing rather than the
+  last result. Both are in ROADMAP.md.
+
+The pure logic — fuzzy scoring, the parser, the emoji and cliphist line
+parsers — is the one part of the shell that can be tested off a session:
+`node tests/launcher.js` runs it extracted verbatim from the QML.
 
 **Replaces rofi, rofi-calc, rofimoji, and the cliphist rofi glue** — four
 things v1 wired together, now one surface with one theme.

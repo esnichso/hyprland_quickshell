@@ -8,11 +8,14 @@ A Hyprland desktop for **CachyOS** on a **ThinkPad E16 Gen 3**, where the whole
 shell layer — bar, notifications, OSD, launcher, control centre, power menu — is
 a single **QuickShell** (QML) process.
 
-**Current state: Phase 2d.** Running in a CachyOS VM. The compositor, the bar
-and the notch all work — clock, OSD, notification toasts, dashboard. Phase 2e
-(launcher, control centre, power, sysmon, wallpaper picker) is **not started**;
-their keybinds exist and log `not implemented`. Network and bluetooth in the
-status island are deliberate placeholders until the control centre binds them.
+**Current state: Phase 2e, partial.** Running in a CachyOS VM. The compositor,
+the bar and the notch work — clock, OSD, notification toasts, dashboard. The
+**launcher is written but has never been run**: all six modes (apps, `>` run,
+`=` calc, `:` emoji, `;` clipboard, `/` windows), keyboard-driven, one overlay.
+The remaining panels (control centre, power, sysmon, wallpaper picker) are
+**not started**; their keybinds exist and log `not implemented`. Network and
+bluetooth in the status island are deliberate placeholders until the control
+centre binds them.
 
 Nothing has run on metal. The dev host is Ubuntu, where Hyprland and QuickShell
 cannot be installed, so anything untested in the VM is unproven.
@@ -109,10 +112,26 @@ pure static checks that need no session. Run it before every push:
 
 - **config keys** — diffs every key in `config/hypr` against the 518 keys the
   wiki snapshot documents, and flags RE2 lookaheads in rules.
-- **qml** — reals assigned to int-typed QML properties, and unbalanced quotes.
+- **qml** — reals assigned to int-typed QML properties, unbalanced quotes, and
+  empty glyph slots.
 
-Both exist because the corresponding mistake shipped once. Neither replaces
-running the thing.
+All three exist because the corresponding mistake shipped once. None of them
+replaces running the thing.
+
+One more thing runs off a session:
+
+```bash
+node tests/launcher.js            # 75 assertions, ~1s
+```
+
+The launcher's pure logic — `services/Fuzzy.qml`, `Calc.qml`, `Emoji.qml`,
+`Clip.qml` — is plain JavaScript with no QML types in it. `tests/launcher.js`
+lifts every `function` and `property` literal straight out of the `.qml` source
+and runs it in node, so it tests the **shipped text**, not a copy that can
+drift. It caught a real precedence bug (`-2^2` answering `4`).
+
+Do not try to grow this into a QML test runner. Everything else in the shell
+needs a compositor, and `qmllint` here is a broken stub.
 
 **Available on a real session:**
 
@@ -316,6 +335,26 @@ singletons for this reason — bind to them, do not re-instantiate.
 
 **Do not name a component the same as one in a directory it imports.** A
 `widgets/Bar.qml` would have shadowed `bar/Bar.qml`, which imports `root:/widgets`.
+
+**Nerd Font glyphs vanish in transit, and nothing complains.** They live in the
+Unicode private use area. A terminal renders them as nothing, `cat` and the file
+viewer show nothing, and a heredoc or a rewriting tool can drop them silently —
+so `text: ""` and `text: ""` are indistinguishable everywhere except in the
+running shell. The OSD, the notch, the dashboard and the toast all shipped with
+**23 empty icon slots** this way, and reading the diff could not find it.
+
+Three consequences, all load-bearing:
+
+- **Write glyphs from their codepoint**, never by pasting the character:
+  `new = old.replace('""', '"' + chr(0xf048) + '"')`. A pasted anchor matches
+  zero times and the edit reports success.
+- **Inspect with `repr`**, not by eye:
+  `line.encode('unicode_escape')`. A scan that reads terminal output will call
+  a correct file broken and a broken file correct — both happened here, in that
+  order.
+- **A deliberate blank is a named property** (`root.noGlyph`), so `check.sh`
+  can tell intent from loss. The lint flags a bare `text: ""`, a ternary with
+  two empty branches, and an empty entry in a `*Glyphs` map.
 
 **When a fetched doc example contradicts working code, trust the code.** A
 `PwObjectTracker` example returned `target:`; the real property is `objects:`,

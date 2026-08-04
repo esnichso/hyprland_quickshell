@@ -63,6 +63,7 @@ satty
 wl-clipboard
 cliphist
 wl-clip-persist
+unicode-emoji
 wf-recorder
 hyprpicker
 playerctl

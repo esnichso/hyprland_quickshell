@@ -84,7 +84,7 @@ Item {
                         Glyph {
                             anchors.centerIn: parent
                             visible: Media.artUrl === ""
-                            text: ""
+                            text: ""
                             font.pixelSize: 30
                             color: Theme.primary
                         }
@@ -144,16 +144,16 @@ Item {
                         Row {
                             spacing: 4
                             CtlButton {
-                                glyph: ""
+                                glyph: ""
                                 enabled: Media.canPrev
                                 onClicked: Media.previous()
                             }
                             CtlButton {
-                                glyph: Media.playing ? "" : ""
+                                glyph: Media.playing ? "" : ""
                                 onClicked: Media.toggle()
                             }
                             CtlButton {
-                                glyph: ""
+                                glyph: ""
                                 enabled: Media.canNext
                                 onClicked: Media.next()
                             }
@@ -176,7 +176,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 10
                         Glyph {
-                            text: ""
+                            text: ""
                             font.pixelSize: 11
                             MouseArea {
                                 anchors.fill: parent; anchors.margins: -6
@@ -185,7 +185,7 @@ Item {
                             }
                         }
                         Glyph {
-                            text: ""
+                            text: ""
                             font.pixelSize: 11
                             MouseArea {
                                 anchors.fill: parent; anchors.margins: -6
@@ -327,7 +327,7 @@ Item {
                 color: Qt.alpha(Theme.primary, 0.18)
                 Glyph {
                     anchors.centerIn: parent
-                    text: ""
+                    text: ""
                     font.pixelSize: 12
                     color: Theme.primary
                 }

@@ -17,6 +17,13 @@
     "toastMs": 5000,
     "osdMs": 1600
   },
+  "launcher": {
+    "width": 640,
+    "height": 420,
+    "rowHeight": 44,
+    "maxResults": 40,
+    "terminal": "kitty"
+  },
   "motion": {
     "enabled": true,
     "expandMs": 260,

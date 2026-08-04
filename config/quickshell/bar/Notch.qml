@@ -143,7 +143,7 @@ IslandSurface {
             Glyph {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: Config.dnd
-                text: ""            // moon
+                text: ""            // moon
                 font.pixelSize: 11
             }
 
@@ -168,7 +168,7 @@ IslandSurface {
             Glyph {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: !Theme.generated
-                text: ""
+                text: ""
                 font.pixelSize: 9
                 color: Theme.error
             }

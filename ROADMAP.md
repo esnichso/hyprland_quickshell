@@ -94,8 +94,8 @@ obviously available, and it is the least valuable of the five.
 
 ### 2e — Panels
 In descending order of daily value:
-1. Launcher (apps → run → calc → clipboard → emoji → windows)
-2. Dashboard (media → notifications → calendar)
+1. ~~Launcher (apps → run → calc → clipboard → emoji → windows)~~ **built**
+2. ~~Dashboard (media → notifications → calendar)~~ **built** (2d)
 3. Control centre (audio → network → bluetooth → display)
 4. Power menu
 5. System monitor
@@ -103,6 +103,18 @@ In descending order of daily value:
 
 **Ship-able checkpoint:** after the launcher and dashboard, the desktop is
 already usable daily. Everything after that is improvement, not blocker.
+**Both are now built** — this is the checkpoint, pending a VM run.
+
+Deliberately deferred out of the launcher, each a bounded addition rather than
+a rework:
+
+| Deferred | Why |
+| --- | --- |
+| Clipboard image thumbnails | Needs `cliphist decode` per visible row into a cache file. A process per row, and no way to verify the result without a session. |
+| Unit conversion in `=` | A units-aware parser is a project, not a feature. The arithmetic parser it would extend is tested. |
+| `=` recalling the last result | Needs a result history, which is state nothing else wants yet. |
+| Per-app frecency decay tuning | The 30-day half-life is a guess. It needs weeks of real use before it means anything. |
+| Tray right-click menus (`Quickshell.DBusMenu`) | Left over from 2b; unrelated to the launcher but the same "panel content" bucket. |
 
 ### 2f — Theming pipeline
 - matugen config + templates for all seven targets

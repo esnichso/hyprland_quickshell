@@ -8,15 +8,15 @@
 // sits at the base of that directory and quickshell registers it as the default
 // config, ignoring subdirectories entirely.
 //
-// PHASE 2d: the bar and the notch are complete — clock, OSD, notification
-// toasts and the dashboard. The standalone panels (launcher, control centre,
-// power, sysmon, wallpaper) are not built yet; their IPC calls are accepted and
-// report that they are unimplemented rather than failing silently.
+// PHASE 2e: the bar, the notch and the launcher. The remaining panels (control
+// centre, power, sysmon, wallpaper) are not built yet; their IPC calls are
+// accepted and report that they are unimplemented rather than failing silently.
 
 import Quickshell
 import Quickshell.Io
 import "root:/"
 import "root:/bar"
+import "root:/launcher"
 import "root:/services"
 
 ShellRoot {
@@ -33,6 +33,11 @@ ShellRoot {
         }
     }
 
+    // One launcher, not one per screen: it follows the focused monitor. Two
+    // instances would both take exclusive keyboard focus and one of them would
+    // win by luck.
+    Launcher {}
+
     // Every panel keybind in conf/binds.lua routes through here:
     //   qs ipc call panels toggle <name>
     IpcHandler {
@@ -41,7 +46,8 @@ ShellRoot {
         function toggle(name: string): string {
             // Built surfaces go through the Panels singleton. Everything else
             // is named but not yet drawn.
-            const built = ["dashboard", "notifications", "media"];
+            const built = ["dashboard", "notifications", "media",
+                           "launcher", "clipboard", "emoji"];
 
             if (name === "dnd") {
                 Notifs.toggleDnd();

@@ -21,6 +21,7 @@ Singleton {
 
     readonly property alias bar: adapter.bar
     readonly property alias notch: adapter.notch
+    readonly property alias launcher: adapter.launcher
     readonly property alias motion: adapter.motion
     readonly property alias clock: adapter.clock
     readonly property alias theme: adapter.theme
@@ -74,6 +75,18 @@ Singleton {
                 property int panelHeight: 560
                 property int toastMs: 5000
                 property int osdMs: 1600
+            }
+
+            // height is the launcher's MAXIMUM height: the box shrinks to fit
+            // the result list and only reaches this when the list is full.
+            property JsonObject launcher: JsonObject {
+                property int width: 640
+                property int height: 420
+                property int rowHeight: 44
+                property int maxResults: 40
+                // Terminal for desktop entries with Terminal=true. Matches the
+                // one conf/binds.lua opens on SUPER+Return.
+                property string terminal: "kitty"
             }
 
             property JsonObject motion: JsonObject {

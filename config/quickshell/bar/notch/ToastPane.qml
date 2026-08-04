@@ -42,7 +42,7 @@ Item {
             Glyph {
                 anchors.centerIn: parent
                 visible: !img.visible
-                text: root.critical ? "" : ""   // warning : bell
+                text: root.critical ? "" : ""   // warning : bell
                 font.pixelSize: 18
                 color: root.critical ? Theme.error : Theme.primary
             }

@@ -254,6 +254,14 @@ sec "qml"
 # INT in Qt; a fractional value aborts the file, and every type that imports it
 # then reports "Type X unavailable" — so the error surfaces five frames away
 # from its cause.
+#
+# The second rule catches EMPTY GLYPH SLOTS. Nerd Font icons live in the Unicode
+# private use area, terminals render them as nothing, and a tool that rewrites a
+# file can drop them without a word — which is how the OSD, the notch, the
+# dashboard and the toast all shipped with `text: ""` where an icon belonged.
+# Reading the diff cannot find it: the character is invisible either way. A
+# deliberate blank must be written as a named property (root.noGlyph), never as
+# a bare "".
 
 if python3 - "$REPO" <<'PYEOF'
 import re, sys, pathlib
@@ -266,14 +274,36 @@ if not qml:
 INT_PROPS = ["font.pixelSize", "font.weight", "maximumLineCount",
              "interval", "elideWidth", "cursorPosition"]
 
+# An icon slot assigned a bare empty string, and a glyph map entry that is
+# empty. Both mean a private-use character was lost, not that a blank was
+# intended — intent is spelled root.noGlyph.
+EMPTY_GLYPH = re.compile(r'^\s*(text|glyph)\s*:\s*""\s*,?\s*$')
+EMPTY_TERNARY = re.compile(r'^\s*(text|glyph)\s*:.*\?\s*""\s*:\s*""')
+GLYPH_MAP_OPEN = re.compile(r'\bproperty\s+var\s+\w*[Gg]lyphs?\s*:\s*\(\{')
+MAP_ENTRY_EMPTY = re.compile(r'^\s*"[^"]+"\s*:\s*""\s*,?\s*$')
+
 bad = []
 for f in qml:
+    in_glyph_map = False
     for i, line in enumerate(f.read_text().splitlines(), 1):
         code = re.sub(r"//.*$", "", line)
+
+        if GLYPH_MAP_OPEN.search(code):
+            in_glyph_map = True
+        elif in_glyph_map and "})" in code:
+            in_glyph_map = False
+        elif in_glyph_map and MAP_ENTRY_EMPTY.match(code):
+            bad.append((f.relative_to(repo), i, "empty glyph in map", code.strip()))
+
+        if EMPTY_GLYPH.search(code):
+            bad.append((f.relative_to(repo), i, "empty glyph slot", code.strip()))
+        elif EMPTY_TERNARY.search(code):
+            bad.append((f.relative_to(repo), i, "both glyph branches empty", code.strip()))
+
         for prop in INT_PROPS:
             m = re.search(rf"\b{re.escape(prop)}\s*:\s*(-?[0-9]+\.[0-9]+)\s*$", code)
             if m:
-                bad.append((f.relative_to(repo), i, prop, m.group(1)))
+                bad.append((f.relative_to(repo), i, f"{prop} (int expected)", m.group(1)))
 
         # Balanced-brace typos are caught by the parser, but an unclosed string
         # is not obvious in a diff.
@@ -282,9 +312,10 @@ for f in qml:
 
 if bad:
     for f, i, prop, val in bad:
-        print(f"  \033[31m ✗ \033[0m {f}:{i}  {prop} = {val}  (int expected)")
+        print(f"  \033[31m ✗ \033[0m {f}:{i}  {prop}: {val}")
     sys.exit(1)
-print(f"  \033[32m ✓ \033[0m {len(qml)} QML files, no fractional int assignments")
+print(f"  \033[32m ✓ \033[0m {len(qml)} QML files, no fractional int assignments"
+      " and no empty glyph slots")
 PYEOF
 then pass=$((pass+1)); else fail=$((fail+1)); fi
 
