@@ -407,17 +407,36 @@ things v1 wired together, now one surface with one theme.
 
 ## 5. Power menu — `SUPER+P`
 
-Centred, 360 wide. Five rows: **Lock · Logout · Suspend · Reboot · Shutdown**,
-each with an icon and its keybind hint.
+**Built** (Phase 2e).
 
-- Navigable with `hjkl`/arrows, Enter confirms, Esc closes
-- Reboot and Shutdown ask for confirmation; the others don't
-- Every destructive action runs `hyprshutdown --post-cmd '...'` so apps get
-  asked to exit gracefully rather than being killed. v1 learned this the hard
-  way — `hyprshutdown` is not a menu, it's the graceful-exit mechanism, and
-  this is the right way to use it.
+Centred, 360 wide. Five rows: **Lock · Log out · Suspend · Restart · Shut
+down**, each with an icon and a one-letter accelerator.
+
+- Navigable with `j`/`k` and the arrows, Enter runs, Esc closes. The letter
+  shown on each row (`L O S R P`) runs it directly.
+- Restart and Shut down ask first; the others don't. A confirmation on Lock is
+  a second keystroke you press every day and resent by the third.
+- Confirmation is a **state of the panel**, not a second window. A dialog would
+  be another surface taking focus, which this repo has already paid for twice.
+  Escape backs out of a pending confirmation before it closes the menu, and
+  moving off the row cancels it — the pending action is always the one under
+  the cursor.
+- Every session-ending action runs `hyprshutdown -t '…' --post-cmd '…'` so apps
+  are asked to exit rather than killed. Flags are from
+  `docs/hyprland/Hypr_Ecosystem_hyprshutdown.md`. **`hyprshutdown` is not a
+  menu** — its name says otherwise and v1 lost a round trip binding it directly.
+  No `--vt`: that flag is for NVIDIA + SDDM, and this machine is Intel.
+- Suspend does *not* go through hyprshutdown — it does not end the session —
+  and uses `systemctl suspend` so it runs through polkit without a password.
 - Lock invokes `hyprlock`
-- A footer shows uptime and whether any app is inhibiting sleep
+- A footer shows uptime, and names whatever is holding a sleep lock. A suspend
+  that silently does nothing looks like a broken button; this is the one place
+  that says why.
+
+  `systemd-inhibit --list`'s columns have moved between systemd releases, so the
+  parser counts lines mentioning a sleep, idle or shutdown lock rather than
+  reading by position. A miscount shows the wrong number; a positional parser
+  would show nonsense.
 
 ---
 

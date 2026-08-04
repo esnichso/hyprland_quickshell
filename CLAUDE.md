@@ -17,8 +17,11 @@ Audio and Display tabs, replacing nmtui, blueman and pavucontrol. Its
 deviations from `FEATURES.md` §3 are listed there and in `ROADMAP.md`, each
 because the Quickshell module does not expose what the feature needs.
 
-Still **not started**: power menu, system monitor, wallpaper picker. Their
-keybinds exist and log `not implemented`.
+The **power menu is written but has never been run** either: five actions, all
+session-ending ones through `hyprshutdown` so apps are asked to exit.
+
+Still **not started**: system monitor, wallpaper picker. Their keybinds exist
+and log `not implemented`.
 
 Nothing has run on metal. The dev host is Ubuntu, where Hyprland and QuickShell
 cannot be installed, so anything untested in the VM is unproven.

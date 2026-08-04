@@ -97,7 +97,7 @@ In descending order of daily value:
 1. ~~Launcher (apps → run → calc → clipboard → emoji → windows)~~ **built**
 2. ~~Dashboard (media → notifications → calendar)~~ **built** (2d)
 3. ~~Control centre (audio → network → bluetooth → display)~~ **built**
-4. Power menu
+4. ~~Power menu~~ **built**
 5. System monitor
 6. Wallpaper + theme picker
 

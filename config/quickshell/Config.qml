@@ -23,6 +23,7 @@ Singleton {
     readonly property alias notch: adapter.notch
     readonly property alias launcher: adapter.launcher
     readonly property alias control: adapter.control
+    readonly property alias power: adapter.power
     readonly property alias motion: adapter.motion
     readonly property alias clock: adapter.clock
     readonly property alias theme: adapter.theme
@@ -95,6 +96,11 @@ Singleton {
             property JsonObject control: JsonObject {
                 property int width: 400
                 property int maxHeight: 520
+            }
+
+            // Height is content-driven: five rows and a footer.
+            property JsonObject power: JsonObject {
+                property int width: 360
             }
 
             property JsonObject motion: JsonObject {

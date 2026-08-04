@@ -18,6 +18,7 @@ import "root:/"
 import "root:/bar"
 import "root:/control"
 import "root:/launcher"
+import "root:/power"
 import "root:/services"
 
 ShellRoot {
@@ -43,6 +44,8 @@ ShellRoot {
     // monitor, because two would both take exclusive keyboard focus.
     ControlCentre {}
 
+    PowerMenu {}
+
     // Every panel keybind in conf/binds.lua routes through here:
     //   qs ipc call panels toggle <name>
     IpcHandler {
@@ -52,7 +55,8 @@ ShellRoot {
             // Built surfaces go through the Panels singleton. Everything else
             // is named but not yet drawn.
             const built = ["dashboard", "notifications", "media",
-                           "launcher", "clipboard", "emoji", "control"];
+                           "launcher", "clipboard", "emoji", "control",
+                           "power"];
 
             if (name === "dnd") {
                 Notifs.toggleDnd();

@@ -28,6 +28,9 @@
     "width": 400,
     "maxHeight": 520
   },
+  "power": {
+    "width": 360
+  },
   "motion": {
     "enabled": true,
     "expandMs": 260,

@@ -53,6 +53,13 @@ Singleton {
         "balance": "",
         "rocket": "",
 
+        // session
+        "logout": "",
+        "suspend": "",
+        "reboot": "",
+        "power": "",
+        "clock": "",
+
         // generic
         "close": "",
         "refresh": "",
@@ -81,6 +88,11 @@ Singleton {
     readonly property string leaf: glyphs.leaf
     readonly property string balance: glyphs.balance
     readonly property string rocket: glyphs.rocket
+    readonly property string logout: glyphs.logout
+    readonly property string suspend: glyphs.suspend
+    readonly property string reboot: glyphs.reboot
+    readonly property string power: glyphs.power
+    readonly property string clock: glyphs.clock
     readonly property string close: glyphs.close
     readonly property string refresh: glyphs.refresh
     readonly property string trash: glyphs.trash
