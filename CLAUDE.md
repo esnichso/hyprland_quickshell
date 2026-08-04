@@ -20,8 +20,11 @@ because the Quickshell module does not expose what the feature needs.
 The **power menu is written but has never been run** either: five actions, all
 session-ending ones through `hyprshutdown` so apps are asked to exit.
 
-Still **not started**: system monitor, wallpaper picker. Their keybinds exist
-and log `not implemented`.
+The **system monitor is written but has never been run**: /proc and /sys polled
+at 1s, and only while the panel is open.
+
+Still **not started**: the wallpaper and theme picker. Its keybind exists and
+logs `not implemented`.
 
 Nothing has run on metal. The dev host is Ubuntu, where Hyprland and QuickShell
 cannot be installed, so anything untested in the VM is unproven.

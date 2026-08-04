@@ -445,16 +445,34 @@ down**, each with an icon and a one-letter accelerator.
 420×520. Not a bar module — you asked for a calm bar, and per-core graphs in
 the bar is the opposite of that. It's one keypress away instead.
 
+**Built** (Phase 2e).
+
 **Source:** `/proc` and `/sys` via `Quickshell.Io` `FileView`, polled at 1s
-while visible and **not polled at all when hidden**.
+while visible and **not polled at all when hidden** — `Sys.active` follows the
+window's visibility, and the previous samples are dropped on open so the first
+delta is never measured against counters from the last time you looked.
 
 - CPU: per-core bars plus a 60s history sparkline, package temperature
 - Memory: used / cached / free stacked bar, swap below it
 - Disk: per-mount usage bars, plus read/write throughput
-- Network: up/down throughput sparkline per interface
-- Battery: draw in watts, charge cycles, health percentage
-- Top processes: 8 rows by CPU, toggleable to sort by memory, each with a kill
-  button
+- Network: up/down throughput sparkline
+- Battery: draw in watts, time to full/empty, health percentage
+- Top processes: 8 rows by CPU, each with a kill button (SIGTERM, not SIGKILL —
+  the same courtesy `hyprshutdown` pays applications at logout)
+
+Everything is a **delta between two samples**, because /proc counters are
+monotonic totals since boot. Three details that are wrong if guessed:
+`MemAvailable` is the only honest "used" figure (`total - free` double-counts
+cache and reports 90% used on an idle machine); `/proc/diskstats` sectors are
+always 512 bytes regardless of the device's block size, and partitions must be
+excluded or every figure doubles; the CPU hwmon is found by **name** each tick
+because its numbering is not stable across boots.
+
+**Deviations.** No **charge cycle count** — `UPowerDevice` does not expose one.
+No **sort-by-memory toggle**; the list is CPU-ordered and shows both figures.
+Network throughput is **summed across interfaces** rather than one sparkline
+per interface, with `lo` and the docker/libvirt bridges excluded so nothing is
+counted twice.
 
 `btop` stays installed for when you need the real thing.
 

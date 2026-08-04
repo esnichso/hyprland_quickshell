@@ -19,6 +19,7 @@ import "root:/bar"
 import "root:/control"
 import "root:/launcher"
 import "root:/power"
+import "root:/sysmon"
 import "root:/services"
 
 ShellRoot {
@@ -46,6 +47,8 @@ ShellRoot {
 
     PowerMenu {}
 
+    SysMonitor {}
+
     // Every panel keybind in conf/binds.lua routes through here:
     //   qs ipc call panels toggle <name>
     IpcHandler {
@@ -56,7 +59,7 @@ ShellRoot {
             // is named but not yet drawn.
             const built = ["dashboard", "notifications", "media",
                            "launcher", "clipboard", "emoji", "control",
-                           "power"];
+                           "power", "sysmon"];
 
             if (name === "dnd") {
                 Notifs.toggleDnd();

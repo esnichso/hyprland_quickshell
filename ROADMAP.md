@@ -98,7 +98,7 @@ In descending order of daily value:
 2. ~~Dashboard (media → notifications → calendar)~~ **built** (2d)
 3. ~~Control centre (audio → network → bluetooth → display)~~ **built**
 4. ~~Power menu~~ **built**
-5. System monitor
+5. ~~System monitor~~ **built**
 6. Wallpaper + theme picker
 
 **Ship-able checkpoint:** after the launcher and dashboard, the desktop is

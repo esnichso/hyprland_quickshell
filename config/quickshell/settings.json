@@ -31,6 +31,10 @@
   "power": {
     "width": 360
   },
+  "sysmon": {
+    "width": 420,
+    "maxHeight": 520
+  },
   "motion": {
     "enabled": true,
     "expandMs": 260,
