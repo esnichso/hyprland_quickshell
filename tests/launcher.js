@@ -211,6 +211,22 @@ check("emoji: search rejects nonsense", Emoji.search("qqqqzz").length, 0);
 check("emoji: empty search returns everything",
     Emoji.search("").length, Emoji.entries.length);
 
+// `face` drives the row layout: a text face gets a wider slot and the UI font,
+// a pictograph gets 24px and the emoji font. Getting it backwards is the bug
+// that made the kaomoji draw over their own labels.
+check("emoji: kaomoji are marked as text faces",
+    Emoji.entries.slice(0, kaomojiCount).every(e => e.face === true), true);
+check("emoji: parsed pictographs are not",
+    Emoji.entries.slice(kaomojiCount).every(e => e.face === false), true);
+
+// The load-failure path builds its fallback through parse(), so it must carry
+// the same fields — assigning root.kaomoji directly did not.
+Emoji.parse("");
+check("emoji: fallback list is kaomoji only", Emoji.entries.length, kaomojiCount);
+check("emoji: fallback entries still carry face",
+    Emoji.entries.every(e => e.face === true), true);
+Emoji.parse(EMOJI_FIXTURE);
+
 // ---------------------------------------------------------------- Clip
 const removed = [];
 const Clip = load("Clip", { Fuzzy,

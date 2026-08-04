@@ -24,6 +24,19 @@ Item {
     readonly property bool isEmoji: item && item.kind === "emoji"
     readonly property bool isInfo: item && item.kind === "info"
 
+    // A text face (¯\_(ツ)_/¯) rather than a pictograph. Ten characters wide
+    // instead of one, and built from scripts an emoji font does not cover — so
+    // it needs a different font AND a wider slot. Emoji.qml sets the flag; the
+    // row cannot tell by looking at the string.
+    readonly property bool isTextFace:
+        isEmoji && item.data !== undefined && item.data !== null && item.data.face === true
+
+    // The leading column is 24px for an icon or a single pictograph, and grows
+    // for a text face up to a cap. Fixed at 24 it drew straight over the title
+    // on one side and out of the row on the other.
+    readonly property real leadWidth:
+        isTextFace ? Math.min(Math.max(face.implicitWidth, 24), 116) : 24
+
     // Monospace for anything that is literal text rather than a label: a
     // clipboard entry, a shell command, and a calculated value are all things
     // where the exact characters matter.
@@ -46,8 +59,14 @@ Item {
 
         // ---- leading mark ----
         Item {
-            width: 24
+            width: root.leadWidth
             height: parent.height
+
+            // Anything wider than the slot is cut off rather than drawn over
+            // its neighbours. Nothing here sets the Text's width, so its
+            // implicitWidth stays independent of the slot it sizes — binding
+            // both directions would be a loop.
+            clip: true
 
             Image {
                 anchors.centerIn: parent
@@ -61,14 +80,20 @@ Item {
             }
 
             Text {
-                anchors.centerIn: parent
+                id: face
+                // Left-aligned, not centred: a centred wide face overflows on
+                // BOTH sides, and the left overflow lands outside the row.
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
                 visible: root.isEmoji
                 text: root.item ? root.item.glyph : ""
-                // Not the Nerd Font: these are real emoji and text faces, and
-                // the kaomoji need a font with the CJK and Kannada coverage
-                // they are built out of.
-                font.family: "Noto Color Emoji"
-                font.pixelSize: 17
+
+                // A pictograph wants the colour emoji font. A text face wants
+                // the UI font, so fontconfig resolves ツ and ಠ through the Noto
+                // CJK/Sans chain instead of walking the fallback list from an
+                // emoji font that covers none of them.
+                font.family: root.isTextFace ? "Inter" : "Noto Color Emoji"
+                font.pixelSize: root.isTextFace ? 12 : 17
                 color: Theme.onSurface
             }
 
@@ -84,7 +109,8 @@ Item {
 
         // ---- title and subtitle ----
         Column {
-            width: parent.width - 24 - 12 - (badge.visible ? badge.width + 12 : 0)
+            width: parent.width - root.leadWidth - 12
+                                - (badge.visible ? badge.width + 12 : 0)
             anchors.verticalCenter: parent.verticalCenter
             spacing: 1
 

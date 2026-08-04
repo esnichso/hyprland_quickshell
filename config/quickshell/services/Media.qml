@@ -35,7 +35,24 @@ Singleton {
     readonly property string title: player && player.trackTitle ? player.trackTitle : ""
     readonly property string artist: player && player.trackArtist ? player.trackArtist : ""
     readonly property string album: player && player.trackAlbum ? player.trackAlbum : ""
-    readonly property string artUrl: player && player.trackArtUrl ? player.trackArtUrl : ""
+    // What players actually put in mpris:artUrl varies more than the spec
+    // suggests, and QML Image renders nothing at all for a source it cannot
+    // resolve — no warning, just an empty square:
+    //
+    //   Spotify, mpv     file:///... or a local cache path with NO scheme
+    //   browsers         https://... (a YouTube poster frame, a track cover)
+    //   some players     data:image/...;base64,...
+    //
+    // Image handles all three, but only if the string is a URL. A bare
+    // filesystem path is the one case that needs fixing up here.
+    readonly property string artUrl: {
+        const raw = player && player.trackArtUrl ? String(player.trackArtUrl) : "";
+        if (raw === "")
+            return "";
+        if (raw.indexOf("://") !== -1 || raw.indexOf("data:") === 0)
+            return raw;
+        return raw.charAt(0) === "/" ? "file://" + raw : "";
+    }
 
     readonly property real position: player ? player.position : 0
     readonly property real length: player ? player.length : 0

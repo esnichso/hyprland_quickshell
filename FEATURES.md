@@ -177,7 +177,13 @@ one.
 
 **Source:** `Quickshell.Services.Mpris`
 
-- Album art at 96px, rounded 12. Falls back to the app icon.
+- Album art at 96px, rounded 12, faded in when it loads. What players put in
+  `mpris:artUrl` varies: a local `file://`, a bare filesystem path with no
+  scheme, an `https://` cover or YouTube poster frame from a browser tab, or a
+  `data:` URI. `Media.artUrl` gives the bare path a scheme — that one case
+  renders as an empty square otherwise — and passes the rest through. The
+  placeholder shows whenever there is no art **on screen**, which includes a
+  URL that failed to fetch, not only a missing one.
 - Title / artist, both marquee-scrolling only on hover
 - Previous / play-pause / next, 32px targets
 - Seek bar with elapsed and total, draggable, only when the player reports
@@ -329,6 +335,12 @@ mode rather than closing it; pressing the same bind twice closes.
   `unicode-emoji` package, lazily on the first `:` and only the
   `fully-qualified` sequences, plus a small built-in kaomoji and symbol list —
   `:shrug` is a text face, not a Unicode character. Enter copies.
+  Text faces are flagged `face: true` and get a wider, clipped leading slot and
+  the UI font; pictographs get 24px and the colour emoji font. Without the
+  distinction a ten-character kaomoji renders centred in a 24px box and draws
+  over its own label on one side and out of the row on the other.
+  **Without the `unicode-emoji` package installed this mode shows only the
+  kaomoji** and logs one warning naming the package.
 - **Calculator** evaluates as you type with a hand-written recursive-descent
   parser: `+ - * / % ^`, parentheses, unary sign, `sqrt abs floor ceil round ln
   log exp sin cos tan asin acos atan`, and `pi e tau`. `^` is right-associative

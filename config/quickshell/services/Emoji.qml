@@ -67,10 +67,16 @@ Singleton {
     readonly property var lineRe: /^[0-9A-Fa-f ]+;\s*fully-qualified\s*#\s+(\S+)\s+E[0-9.]+\s+(.+?)\s*$/
     readonly property var groupRe: /^#\s*group:\s*(.+?)\s*$/
 
+    // `face` marks an entry that is TEXT rather than a pictograph. A kaomoji is
+    // ten characters of Japanese, Kannada and combining marks; an emoji is one
+    // pictograph. They need different fonts and different widths, and the row
+    // cannot tell them apart by looking at the string.
     function parse(text) {
         const out = [];
-        for (let i = 0; i < root.kaomoji.length; i++)
-            out.push(root.kaomoji[i]);
+        for (let i = 0; i < root.kaomoji.length; i++) {
+            const k = root.kaomoji[i];
+            out.push({ char: k.char, name: k.name, group: k.group, face: true });
+        }
 
         const lines = String(text || "").split("\n");
         let group = "";
@@ -89,7 +95,7 @@ Singleton {
 
             const m = root.lineRe.exec(line);
             if (m)
-                out.push({ char: m[1], name: m[2], group: group });
+                out.push({ char: m[1], name: m[2], group: group, face: false });
         }
 
         root.entries = out;
@@ -134,8 +140,10 @@ Singleton {
             root.failed = true;
             console.warn(`Emoji: could not read ${root.source} (${err}).`,
                          "Install the unicode-emoji package; kaomoji still work.");
-            root.entries = root.kaomoji;
-            root.ready = true;
+            // Through parse() rather than assigning kaomoji directly, so the
+            // fallback list is built by the same code and carries the same
+            // fields as the real one.
+            root.parse("");
         }
     }
 }

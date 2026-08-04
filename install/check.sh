@@ -282,11 +282,37 @@ EMPTY_TERNARY = re.compile(r'^\s*(text|glyph)\s*:.*\?\s*""\s*:\s*""')
 GLYPH_MAP_OPEN = re.compile(r'\bproperty\s+var\s+\w*[Gg]lyphs?\s*:\s*\(\{')
 MAP_ENTRY_EMPTY = re.compile(r'^\s*"[^"]+"\s*:\s*""\s*,?\s*$')
 
+def strip_comment(line):
+    """Drop a // comment, but not a // that is inside a string.
+
+    A regex cannot do this: `"://"` in a URL and `` `file://${p}` `` both look
+    like the start of a comment, and truncating there leaves an odd number of
+    quotes — which the unbalanced-quote rule below then reports as broken code.
+    That false positive fired on real, correct Media.qml.
+    """
+    out = []
+    quote = None
+    i = 0
+    while i < len(line):
+        c = line[i]
+        if quote:
+            if c == "\\":
+                out.append(line[i:i + 2]); i += 2; continue
+            if c == quote:
+                quote = None
+        elif c in "\"'`":
+            quote = c
+        elif c == "/" and line[i + 1:i + 2] == "/":
+            break
+        out.append(c)
+        i += 1
+    return "".join(out)
+
 bad = []
 for f in qml:
     in_glyph_map = False
     for i, line in enumerate(f.read_text().splitlines(), 1):
-        code = re.sub(r"//.*$", "", line)
+        code = strip_comment(line)
 
         if GLYPH_MAP_OPEN.search(code):
             in_glyph_map = True

@@ -72,18 +72,35 @@ Item {
                         color: Qt.alpha(Theme.primary, 0.25)
 
                         Image {
+                            id: art
                             anchors.fill: parent
                             source: Media.artUrl
                             fillMode: Image.PreserveAspectCrop
                             sourceSize: Qt.size(192, 192)
                             asynchronous: true
+
+                            // A remote thumbnail arrives a moment after the
+                            // title does. Fading it in stops the panel
+                            // flickering between placeholder and art on every
+                            // track change.
+                            opacity: status === Image.Ready ? 1 : 0
+                            Behavior on opacity {
+                                NumberAnimation { duration: Config.fadeMs }
+                            }
+
+                            onStatusChanged: {
+                                if (status === Image.Error)
+                                    console.warn("Media: could not load art:", Media.artUrl);
+                            }
                         }
 
-                        // Shown when the player reports no art, which is most
-                        // of the time for browser tabs.
+                        // Shown whenever there is no art ON SCREEN — no URL,
+                        // still fetching, or a URL that failed. Keyed off the
+                        // URL alone, this left a blank square every time a
+                        // remote thumbnail did not load.
                         Glyph {
                             anchors.centerIn: parent
-                            visible: Media.artUrl === ""
+                            visible: art.status !== Image.Ready
                             text: ""
                             font.pixelSize: 30
                             color: Theme.primary
