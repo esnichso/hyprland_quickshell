@@ -21,6 +21,11 @@ hl.on("hyprland.start", function()
   -- Removable media automount.
   hl.exec_cmd("udiskie --no-automount --smart-tray")
 
+  -- Night light. Runs as a daemon doing nothing until a profile or the
+  -- control centre sets a temperature; the control centre drives it over
+  -- `hyprctl hyprsunset`, which needs it already running.
+  hl.exec_cmd("hyprsunset")
+
   -- Idle management: dim, lock, suspend.
   hl.exec_cmd("hypridle")
 

@@ -24,6 +24,10 @@
     "maxResults": 40,
     "terminal": "kitty"
   },
+  "control": {
+    "width": 400,
+    "maxHeight": 520
+  },
   "motion": {
     "enabled": true,
     "expandMs": 260,

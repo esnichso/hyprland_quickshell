@@ -115,20 +115,58 @@ IslandSurface {
         }
 
         // --- network ---
-        // PHASE 1: static glyph. Quickshell.Networking wiring is Phase 2 —
-        // the module exists, but a half-bound network item that lies about
-        // your connection is worse than one that is obviously a placeholder.
-        Glyph {
+        //
+        // Wired outranks wifi: if the cable is in, that is the connection you
+        // are on. Net.mode resolves the four states in one place so this and
+        // the control centre cannot disagree.
+        Item {
             anchors.verticalCenter: parent.verticalCenter
-            text: ""   // nf-fa-wifi
-            color: Theme.onSurfaceVariant
+            width: Net.mode === "wifi" ? bars.implicitWidth : netGlyph.implicitWidth
+            height: Config.bar.islandHeight
+
+            SignalBars {
+                id: bars
+                anchors.centerIn: parent
+                visible: Net.mode === "wifi"
+                level: Net.bars(Net.active)
+                color: Theme.onSurfaceVariant
+            }
+
+            Glyph {
+                id: netGlyph
+                anchors.centerIn: parent
+                visible: Net.mode !== "wifi"
+                text: Net.mode === "wired" ? Icons.wired
+                    : Net.mode === "off" ? Icons.wifiOff
+                    : Icons.wifiOff
+                // Down is the only one worth colouring: off is a choice you
+                // made, down is something that broke.
+                color: Net.mode === "down" ? Theme.error : Theme.onSurfaceVariant
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                anchors.margins: -4
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Panels.toggle("control")
+            }
         }
 
         // --- bluetooth (conditional) ---
         Glyph {
             anchors.verticalCenter: parent.verticalCenter
-            visible: false   // Phase 2: show when the adapter is on
-            text: ""   // nf-fa-bluetooth
+            // Hidden when the adapter is off, which is the boring state. An
+            // absent adapter (a VM) hides it too.
+            visible: Config.modules.bluetooth && Bt.enabled
+            text: Icons.bluetooth
+            color: Bt.anyConnected ? Theme.primary : Theme.onSurfaceVariant
+
+            MouseArea {
+                anchors.fill: parent
+                anchors.margins: -4
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Panels.toggle("control")
+            }
         }
 
         // --- mic, only when muted ---

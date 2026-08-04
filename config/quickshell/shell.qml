@@ -16,6 +16,7 @@ import Quickshell
 import Quickshell.Io
 import "root:/"
 import "root:/bar"
+import "root:/control"
 import "root:/launcher"
 import "root:/services"
 
@@ -38,6 +39,10 @@ ShellRoot {
     // win by luck.
     Launcher {}
 
+    // Same reasoning as the launcher: one instance, following the focused
+    // monitor, because two would both take exclusive keyboard focus.
+    ControlCentre {}
+
     // Every panel keybind in conf/binds.lua routes through here:
     //   qs ipc call panels toggle <name>
     IpcHandler {
@@ -47,7 +52,7 @@ ShellRoot {
             // Built surfaces go through the Panels singleton. Everything else
             // is named but not yet drawn.
             const built = ["dashboard", "notifications", "media",
-                           "launcher", "clipboard", "emoji"];
+                           "launcher", "clipboard", "emoji", "control"];
 
             if (name === "dnd") {
                 Notifs.toggleDnd();

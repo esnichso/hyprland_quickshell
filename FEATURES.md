@@ -232,8 +232,22 @@ project. If you want it later it's a bounded addition.
 
 ## 3. Control centre — `SUPER+I`, or click any status item
 
+**Built** (Phase 2e). Four tabs; five details fall short of this spec and are
+called out inline below, each with a line in ROADMAP.md.
+
 400 wide, height driven by content, anchored under the right island. Tabs
 across the top: **Network · Bluetooth · Audio · Display**.
+
+The window copies the launcher's pattern exactly — full-screen transparent
+overlay, exclusive keyboard focus, click outside to close, Escape to close —
+because that pattern is known to work. It deliberately does **not** use
+`HyprlandFocusGrab`: the notch uses a grab, and a grab plus a second
+focus-taking surface is what broke the dashboard twice. One focus mechanism per
+surface.
+
+Only the visible tab is `active`. Wifi scanning, bluetooth discovery and
+binding every PipeWire node all cost power or work, so each tab starts its own
+expense when it appears and stops it when it does not.
 
 ### Network
 
@@ -245,10 +259,17 @@ across the top: **Network · Bluetooth · Audio · Display**.
   (not a separate dialog), Enter connects, errors render in the row in `error`
 - Known networks connect on click
 - Right-click → forget
-- Active connection shows IP, gateway, and link speed in a footer
 - Ethernet appears as a pinned row at the top when a cable is in
-- VPN section listing configured tunnels with toggles — Mullvad manages its
-  own connections, so its entry just activates the tray icon
+- Signal strength is drawn as four bars of **geometry, not a font glyph**.
+  Nerd Fonts puts graded wifi icons in the Material Design range, which v3
+  moved to Unicode plane 1 — codepoints this repo cannot verify without a
+  session, and an invented one renders as a replacement box.
+
+**Deviations.** `Quickshell.Networking` exposes no addressing information and no
+VPN model, so the **IP / gateway / link-speed footer** and the **VPN section**
+are not built — reaching them means shelling out to `nmcli`, which is the thing
+this tab exists to stop doing. **Enterprise (802.1X) networks** say so and point
+at `nmtui` rather than offering a password box that cannot work.
 
 **This replaces `nmtui`**, which v1 launched tiled and which swallowed the
 whole screen. No terminal UI in a floating window pretending to be a GUI.
@@ -261,7 +282,11 @@ whole screen. No terminal UI in a floating window pretending to be a GUI.
 - Paired devices first with battery level where the device reports it
   (headphones and mice mostly do), then discovered devices
 - Click → connect/disconnect. Right-click → forget.
-- Pairing with a PIN renders the confirmation inline
+
+**Deviation.** Pairing that needs a **PIN confirmation** is not handled: BlueZ
+asks for that through an `org.bluez.Agent1` registration, which Quickshell 0.3.0
+does not expose. Devices that pair without confirmation work; anything that puts
+a number on a screen needs `bluetoothctl`.
 
 **Replaces `blueman`.**
 
@@ -270,8 +295,11 @@ whole screen. No terminal UI in a floating window pretending to be a GUI.
 **Source:** `Quickshell.Services.Pipewire`
 
 - Output device list with a radio selection and a per-device volume slider
-- Input device list, same, plus a live input-level meter so you can see the
-  mic is actually picking you up before a call
+- Input device list, same
+
+  **Deviation:** the live input-level meter is not built. Reading a node's peak
+  level means attaching a monitor stream, which Quickshell 0.3.0 does not
+  expose.
 - **Per-application volume** — every PipeWire stream with its app icon and its
   own slider. This is the pavucontrol replacement and the reason to bother.
 - Mute buttons everywhere; muted sliders grey out but keep their value
@@ -282,7 +310,16 @@ whole screen. No terminal UI in a floating window pretending to be a GUI.
 
 - Screen brightness slider (`sysfs`, with `brightnessctl` as the setter)
 - Keyboard backlight: off / low / high segmented control
-- Night light toggle and temperature slider, driving `hyprsunset`
+- Night light toggle and temperature slider, driving `hyprsunset` over
+  `hyprctl hyprsunset temperature|identity` — the commands in
+  `docs/hyprland/Hypr_Ecosystem_hyprsunset.md`, not invented. The daemon is
+  started in `conf/autostart.lua`; without it the tab says so rather than
+  silently doing nothing.
+
+  **Deviation:** the state shown is what you last set, not a readback.
+  `hyprctl hyprsunset profile` prints the active profile but its output format
+  is undocumented, so the parser is best-effort and is not allowed to move the
+  UI when it fails.
 - Scale selector for the internal panel — 1.0 / 1.25 / 1.5, applied via
   `hyprctl keyword monitor`. **Metal-only: cannot be verified in the VM.**
 - Power profile: Saver / Balanced / Performance, via `power-profiles-daemon`,

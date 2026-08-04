@@ -22,6 +22,7 @@ Singleton {
     readonly property alias bar: adapter.bar
     readonly property alias notch: adapter.notch
     readonly property alias launcher: adapter.launcher
+    readonly property alias control: adapter.control
     readonly property alias motion: adapter.motion
     readonly property alias clock: adapter.clock
     readonly property alias theme: adapter.theme
@@ -87,6 +88,13 @@ Singleton {
                 // Terminal for desktop entries with Terminal=true. Matches the
                 // one conf/binds.lua opens on SUPER+Return.
                 property string terminal: "kitty"
+            }
+
+            // maxHeight caps the panel; each tab is shorter when its content
+            // is, and scrolls when it is not.
+            property JsonObject control: JsonObject {
+                property int width: 400
+                property int maxHeight: 520
             }
 
             property JsonObject motion: JsonObject {

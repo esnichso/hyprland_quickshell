@@ -8,14 +8,17 @@ A Hyprland desktop for **CachyOS** on a **ThinkPad E16 Gen 3**, where the whole
 shell layer — bar, notifications, OSD, launcher, control centre, power menu — is
 a single **QuickShell** (QML) process.
 
-**Current state: Phase 2e, partial.** Running in a CachyOS VM. The compositor,
-the bar and the notch work — clock, OSD, notification toasts, dashboard. The
-**launcher is written but has never been run**: all six modes (apps, `>` run,
-`=` calc, `:` emoji, `;` clipboard, `/` windows), keyboard-driven, one overlay.
-The remaining panels (control centre, power, sysmon, wallpaper picker) are
-**not started**; their keybinds exist and log `not implemented`. Network and
-bluetooth in the status island are deliberate placeholders until the control
-centre binds them.
+**Current state: Phase 2e, partial.** Running in a CachyOS VM. Working there:
+the compositor, the bar, the notch (clock, OSD, toasts, dashboard) and the
+launcher — all six modes, keyboard-driven, one overlay.
+
+The **control centre is written but has never been run**: Network, Bluetooth,
+Audio and Display tabs, replacing nmtui, blueman and pavucontrol. Its
+deviations from `FEATURES.md` §3 are listed there and in `ROADMAP.md`, each
+because the Quickshell module does not expose what the feature needs.
+
+Still **not started**: power menu, system monitor, wallpaper picker. Their
+keybinds exist and log `not implemented`.
 
 Nothing has run on metal. The dev host is Ubuntu, where Hyprland and QuickShell
 cannot be installed, so anything untested in the VM is unproven.

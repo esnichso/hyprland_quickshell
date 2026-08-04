@@ -96,7 +96,7 @@ obviously available, and it is the least valuable of the five.
 In descending order of daily value:
 1. ~~Launcher (apps → run → calc → clipboard → emoji → windows)~~ **built**
 2. ~~Dashboard (media → notifications → calendar)~~ **built** (2d)
-3. Control centre (audio → network → bluetooth → display)
+3. ~~Control centre (audio → network → bluetooth → display)~~ **built**
 4. Power menu
 5. System monitor
 6. Wallpaper + theme picker
@@ -115,6 +115,18 @@ a rework:
 | `=` recalling the last result | Needs a result history, which is state nothing else wants yet. |
 | Per-app frecency decay tuning | The 30-day half-life is a guess. It needs weeks of real use before it means anything. |
 | Tray right-click menus (`Quickshell.DBusMenu`) | Left over from 2b; unrelated to the launcher but the same "panel content" bucket. |
+
+Deferred out of the **control centre**, each because the module does not expose
+what the feature needs — not because it was skipped:
+
+| Deferred | Why |
+| --- | --- |
+| Network IP / gateway / link-speed footer | `Quickshell.Networking` exposes no addressing information. Reaching it means shelling out to `nmcli`, which is what this tab exists to stop doing. |
+| VPN section | No VPN model in the module either. Mullvad manages its own connections through its tray icon regardless. |
+| Enterprise (802.1X) wifi | Needs a certificate and identity flow. The tab says so and points at `nmtui` rather than offering a password box that cannot work. |
+| Bluetooth PIN confirmation | BlueZ asks through an `org.bluez.Agent1` registration, which Quickshell 0.3.0 does not expose. Devices that pair without confirmation work. |
+| Live input-level meter | Reading a node's peak level needs a monitor stream; not exposed. |
+| hyprsunset state readback | `hyprctl hyprsunset profile` prints the active profile, but its output format is undocumented. The parser is best-effort and is not allowed to move the UI when it fails — if it turns out to work on metal, delete the local copy and trust it. |
 
 ### 2f — Theming pipeline
 - matugen config + templates for all seven targets
