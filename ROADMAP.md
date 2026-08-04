@@ -99,7 +99,7 @@ In descending order of daily value:
 3. ~~Control centre (audio → network → bluetooth → display)~~ **built**
 4. ~~Power menu~~ **built**
 5. ~~System monitor~~ **built**
-6. Wallpaper + theme picker
+6. ~~Wallpaper + theme picker~~ **built**
 
 **Ship-able checkpoint:** after the launcher and dashboard, the desktop is
 already usable daily. Everything after that is improvement, not blocker.

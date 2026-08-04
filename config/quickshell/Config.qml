@@ -25,6 +25,7 @@ Singleton {
     readonly property alias control: adapter.control
     readonly property alias power: adapter.power
     readonly property alias sysmon: adapter.sysmon
+    readonly property alias picker: adapter.picker
     readonly property alias motion: adapter.motion
     readonly property alias clock: adapter.clock
     readonly property alias theme: adapter.theme
@@ -41,8 +42,15 @@ Singleton {
     readonly property int fadeMs: adapter.motion.enabled ? adapter.motion.fadeMs : 0
     readonly property int fadeDelayMs: adapter.motion.enabled ? adapter.motion.fadeDelayMs : 0
 
+    // Blocks until the write has actually landed.
+    //
+    // The wallpaper picker writes theme.mode and theme.scheme here and then
+    // immediately runs install.sh --theme, which READS THIS FILE BACK. A queued
+    // write would let the installer see the old scheme and render the palette
+    // the user just changed away from.
     function save() {
         settingsFile.writeAdapter();
+        settingsFile.waitForJob();
     }
 
     FileView {
@@ -107,6 +115,12 @@ Singleton {
             property JsonObject sysmon: JsonObject {
                 property int width: 420
                 property int maxHeight: 520
+            }
+
+            property JsonObject picker: JsonObject {
+                property int width: 560
+                property int maxHeight: 480
+                property int columns: 3
             }
 
             property JsonObject motion: JsonObject {

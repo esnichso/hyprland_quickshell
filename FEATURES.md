@@ -504,8 +504,35 @@ colour — you can then change wallpaper freely without the desktop re-theming.
 Both write `theme.mode` to `settings.json`, so the state survives a restart
 and `check.sh` can report which mode you're in.
 
-Each swatch row previews the theme's actual `primary`, `surface` and
-`onSurface`, so you're picking by colour rather than by name.
+**Built** (Phase 2e), and with one rule that matters more than the panel:
+
+**The picker does not generate colour.** It shells out to
+`install/install.sh --theme <name|path>` — the same command you would type. It
+never runs matugen, never writes `colors.json` and does not know what a
+template is. A second mechanism here would be a second thing to keep in sync
+with the seven matugen targets, and it would drift. `install.sh` gained a
+`--wallpaper <path>` flag for the one case the existing flags could not cover:
+changing the picture in "pick a theme" mode, where re-theming is exactly what
+must not happen.
+
+The repo path is **derived, not hardcoded** — `~/.config/quickshell` is a
+symlink into the checkout, so the wrapper resolves it and goes up two levels.
+v1's fish aliases hardcoded the dev host's path and were broken everywhere else.
+
+`Config.save()` now blocks until the write lands, because the picker writes
+`theme.mode`/`theme.scheme` and then immediately runs an installer that reads
+that file back. A queued write would let it render the scheme you just changed
+away from.
+
+**Deviations.** Each theme row previews its **seed** colour, not the resolved
+`primary`/`surface`/`onSurface` — those do not exist until matugen has run, and
+running it per row to draw a swatch is three processes to preview three
+squares. Scheme is **Dark / Light**; there is no Auto, which would need
+time-of-day switching that nothing else in the shell has. Thumbnails are
+decoded at `sourceSize.width: 320` and cached by Qt in memory rather than
+written to `~/.cache/quickshell/wallthumbs/` — a disk cache needs an external
+resizer, and the decode-time downsample already stops a 4000px photo becoming a
+4000px texture.
 
 ---
 

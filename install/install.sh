@@ -10,6 +10,7 @@
 #   ./install/install.sh --services   enable system/user services
 #   ./install/install.sh --theme      regenerate the palette
 #   ./install/install.sh --theme <name|/path/to/wallpaper.jpg>
+#   ./install/install.sh --wallpaper <path>   set it WITHOUT retheming
 #   ./install/install.sh --yes        never prompt (answers yes, not no)
 
 set -euo pipefail
@@ -277,6 +278,23 @@ set_wallpaper() {
     hyprctl hyprpaper wallpaper ",$1,$fit" >/dev/null 2>&1 || true
 }
 
+# Set the wallpaper and remember it, WITHOUT touching the palette.
+#
+# This is what "pick a theme" mode needs: in that mode changing wallpaper must
+# not re-theme the desktop, which is the whole point of the setting. do_theme
+# with an image argument always runs matugen, so it is the wrong entry point.
+do_wallpaper() {
+    step "wallpaper"
+    local img="${1:-}"
+    [[ -n "$img" ]] || die "--wallpaper needs a path"
+    [[ -f "$img" ]] || die "no such file: $img"
+
+    mkdir -p "$STATE_HOME/quickshell"
+    printf '%s\n' "$img" > "$STATE_HOME/quickshell/wallpaper"
+    set_wallpaper "$img"
+    ok "$(basename "$img")"
+}
+
 # Minimal nested-key reader. python3 is a hard dependency of pacman, so it is
 # always present; jq is not.
 json_get() {
@@ -294,7 +312,7 @@ except Exception:
 # ---------------------------------------------------------------- main
 
 main() {
-    local do_all=1 pkgs=0 link=0 svc=0 theme=0 theme_arg=""
+    local do_all=1 pkgs=0 link=0 svc=0 theme=0 theme_arg="" wall=0 wall_arg=""
 
     while (( $# )); do
         case "$1" in
@@ -303,6 +321,9 @@ main() {
             --services) do_all=0; svc=1 ;;
             --theme)    do_all=0; theme=1
                         [[ ${2:-} && ${2:-} != --* ]] && { theme_arg="$2"; shift; } ;;
+            --wallpaper) do_all=0
+                        [[ ${2:-} && ${2:-} != --* ]] && { wall=1; wall_arg="$2"; shift; } \
+                            || die "--wallpaper needs a path" ;;
             --yes|-y)   PACMAN_CONFIRM="--noconfirm" ;;
             -h|--help)  sed -n '2,13p' "$0"; exit 0 ;;
             *)          die "unknown flag: $1" ;;
@@ -314,6 +335,7 @@ main() {
     (( do_all || pkgs ))  && do_packages
     (( do_all || link ))  && do_link
     (( do_all || svc ))   && do_services
+    (( wall ))            && do_wallpaper "$wall_arg"
     (( do_all || theme )) && do_theme "$theme_arg"
 
     step "done"

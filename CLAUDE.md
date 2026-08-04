@@ -20,11 +20,14 @@ because the Quickshell module does not expose what the feature needs.
 The **power menu is written but has never been run** either: five actions, all
 session-ending ones through `hyprshutdown` so apps are asked to exit.
 
-The **system monitor is written but has never been run**: /proc and /sys polled
-at 1s, and only while the panel is open.
+The **system monitor** and the **wallpaper/theme picker** are written but have
+never been run either. That is **all six panels of Phase 2e**; nothing in
+`FEATURES.md` is unbuilt. What remains is 2f (the theming pipeline's role
+overrides) and Phase 3, metal.
 
-Still **not started**: the wallpaper and theme picker. Its keybind exists and
-logs `not implemented`.
+Every panel's deviations are listed in `FEATURES.md` beside the feature and in
+`ROADMAP.md` §2e, each because a Quickshell module does not expose what the
+feature needs — none were skipped for effort.
 
 Nothing has run on metal. The dev host is Ubuntu, where Hyprland and QuickShell
 cannot be installed, so anything untested in the VM is unproven.

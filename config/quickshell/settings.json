@@ -35,6 +35,11 @@
     "width": 420,
     "maxHeight": 520
   },
+  "picker": {
+    "width": 560,
+    "maxHeight": 480,
+    "columns": 3
+  },
   "motion": {
     "enabled": true,
     "expandMs": 260,
