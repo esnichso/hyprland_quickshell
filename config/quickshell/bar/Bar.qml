@@ -9,6 +9,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import "root:/"
+import "root:/services"
 
 PanelWindow {
     id: root
@@ -63,6 +64,47 @@ PanelWindow {
     // click-through, and the blur layer rule sets ignore_alpha so fully
     // transparent pixels are not blurred either.
     implicitHeight: Config.bar.topMargin + Config.notch.panelHeight + Config.bar.height
+
+    // Escape closes an open panel.
+    //
+    // The HyprlandFocusGrab in Notch.qml ALREADY routes the keyboard to this
+    // window while the dashboard is open — that is why you cannot type into the
+    // window behind it. The key events were arriving and being dropped: a QML
+    // window delivers them to whichever item holds active focus, and nothing in
+    // the bar had ever asked for it.
+    //
+    // So this is an Item inside the EXISTING window, not a surface of its own.
+    // Two earlier attempts added a second focus-taking surface; both broke the
+    // dashboard, because the grab dismisses on focus leaving its window list.
+    // There is nothing to fight here — the grab's window and the window holding
+    // the key handler are the same window.
+    //
+    // Zero-size on purpose. Key delivery does not depend on geometry, and an
+    // item with no size cannot participate in stacking or swallow a click.
+    Item {
+        id: keys
+        focus: true
+
+        Keys.onEscapePressed: event => {
+            // Not accepted when nothing is open, so Escape is never quietly
+            // eaten in a state where the shell has no business with it.
+            if (!Panels.anyOpen)
+                return;
+            Panels.closeAll();
+            event.accepted = true;
+        }
+    }
+
+    // Focus is taken when the panel opens rather than held permanently: the
+    // grab is what makes the keyboard reachable at all, and it only exists
+    // while the dashboard is up.
+    Connections {
+        target: Panels
+        function onDashChanged() {
+            if (Panels.dash)
+                keys.forceActiveFocus();
+        }
+    }
 
     WorkspaceIsland {
         id: workspaces

@@ -344,9 +344,10 @@ windows therefore answered with the state from before the window opened, and the
 workspace island lagged one step behind reality. Prefer the typed live model
 (`workspace.toplevels`, an ObjectModel) whenever the value has to react.
 
-**Keyboard focus and `HyprlandFocusGrab` fight, and the dashboard loses.**
-Read this before touching panel dismissal. `Escape` closing the dashboard is
-**still unimplemented** after two attempts that each broke it worse:
+**`HyprlandFocusGrab` already gives its window the keyboard — do not add a
+second surface to catch keys.** Read this before touching panel dismissal.
+`Escape` on the dashboard took three attempts, and the first two each broke it
+worse:
 
 1. Added `PanelKeys`, a surface that takes `Exclusive` keyboard focus while a
    panel is open. The dashboard flashed open and closed instantly. Cause: the
@@ -357,19 +358,23 @@ Read this before touching panel dismissal. `Escape` closing the dashboard is
    racing the grab's surface-list commit. The dashboard then did not open at
    all. Root cause not established.
 
-Both were reverted. What is actually known: a layer surface with no keyboard
-focus cannot see a key, so there is nothing for `Keys.onEscapePressed` to hang
-off; layer-shell keyboard interactivity is independent of the input region, so a
-surface *can* hold keys while accepting no clicks (`mask: Region {}`); only one
-surface may hold `Exclusive` at a time. What is not known is how Hyprland
-sequences a focus grab against a layer surface changing its keyboard
-interactivity — and that is the thing to establish, **from a running session**,
-before attempting this a third time. `hyprctl layers` and the grab's `cleared`
-signal are the instruments.
+Both were reverted. What resolved it was one observation from the VM that no
+amount of reading could replace: *the dashboard already captured the keyboard —
+you could not type into the terminal behind it.* The grab was routing keys to
+the bar the whole time. They were arriving and being **dropped**, because a QML
+window delivers key events to whichever item holds active focus, and nothing in
+the bar had ever asked for it. The fix is a zero-size `Item { focus: true }`
+inside the bar window with a `Keys.onEscapePressed`, and `forceActiveFocus()`
+when the panel opens. No new surface, nothing for the grab to fight.
 
-The lesson that generalises: **two mechanisms that both move focus will fight,
-and the symptom appears on the feature that was already working.** Neither
-attempt was visible as a bug in review; both needed the compositor to show.
+Two lessons, both expensive:
+
+- **Two mechanisms that both move focus will fight, and the symptom lands on the
+  feature that was already working.** Neither failure was visible in review.
+- **Getting the keyboard to a surface and getting it to an item are different
+  problems.** I spent two attempts on the first while the second was the one
+  that was broken. "It captures the keyboard but the key does nothing" is the
+  symptom that separates them — ask for it before building anything.
 
 **Nerd Font glyphs vanish in transit, and nothing complains.** They live in the
 Unicode private use area. A terminal renders them as nothing, `cat` and the file

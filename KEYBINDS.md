@@ -56,21 +56,19 @@ The whole point of the shell being one process is that every panel has a key.
 | `SUPER` + `ALT` + `W` | Wallpaper + theme picker |
 | `SUPER` + `SHIFT` + `N` | Toggle Do Not Disturb |
 | `SUPER` + `Escape` | Lock the screen — hyprlock |
-| `Escape` | Close whatever shell surface is open — **launcher only, see below** |
+| `Escape` | Close whatever shell surface is open |
 
-`Escape` closes the **launcher**, which holds its own exclusive keyboard focus.
+`Escape` is **not** a compositor bind — it could not be, or it would be
+swallowed before every application that needs it.
 
-It does **not** close the dashboard, and that is currently unresolved rather
-than unimplemented. It cannot be a compositor bind, or it would be swallowed
-before every application that needs it. The dashboard is dismissed instead by
-`HyprlandFocusGrab`, which closes it when you click away — and that grab
-dismisses on a focus change to *any* surface outside its window list, so a
-second surface that takes the keyboard in order to serve Escape closes the very
-panel it was meant to serve. Two attempts at this both broke the dashboard;
-they are described in CLAUDE.md so the third does not repeat them.
-
-Close the dashboard with `SUPER` + `N`, by clicking the notch again, or by
-clicking anywhere else on screen.
+The launcher handles it directly; it holds its own exclusive keyboard focus.
+The dashboard gets it from `HyprlandFocusGrab`, which already routes the
+keyboard to the bar while a panel is open — that is why you cannot type into the
+window behind an open dashboard. The handler is therefore a zero-size focused
+`Item` **inside the bar window**, not a surface of its own: the grab dismisses
+on focus leaving its window list, so a second focus-taking surface closes the
+panel it was meant to serve. Two attempts learned that the hard way; see
+CLAUDE.md.
 
 `SUPER+Escape` for lock rather than `SUPER+L`: `L` is needed for focus-right
 in the hjkl row, and lock is something you want *away* from anything you hit
