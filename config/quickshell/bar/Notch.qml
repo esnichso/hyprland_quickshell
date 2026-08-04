@@ -191,18 +191,12 @@ IslandSurface {
     // only way out is the keybind, because the bar's input mask means stray
     // clicks never reach the shell at all.
     //
-    // PanelKeys must be in this list. The grab clears on a focus change to ANY
-    // surface outside it, and PanelKeys takes the keyboard the instant a panel
-    // opens — so leaving it out made the dashboard close itself the moment it
-    // appeared, which read as the panel flashing and vanishing.
+    // This grab is ALSO why the dashboard has no Escape key: it dismisses on a
+    // focus change to any surface outside this list, so a second surface that
+    // takes the keyboard closes the panel instead of serving it. See CLAUDE.md.
     HyprlandFocusGrab {
         id: grab
-        windows: {
-            const w = [];
-            if (root.hostWindow) w.push(root.hostWindow);
-            if (Panels.keyWindow) w.push(Panels.keyWindow);
-            return w;
-        }
+        windows: root.hostWindow ? [root.hostWindow] : []
         active: root.dashOpen
         onCleared: Panels.closeAll()
     }

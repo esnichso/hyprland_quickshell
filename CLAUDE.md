@@ -344,21 +344,32 @@ windows therefore answered with the state from before the window opened, and the
 workspace island lagged one step behind reality. Prefer the typed live model
 (`workspace.toplevels`, an ObjectModel) whenever the value has to react.
 
-**A layer surface with no keyboard focus cannot see a key, so there is nothing
-for `Keys.onEscapePressed` to hang off.** Layer-shell keyboard interactivity is
-independent of the input region, though — a surface can hold the keyboard while
-accepting no pointer events at all (`mask: Region {}`). That is how `Escape`
-closes a panel drawn inside the bar without making the bar itself focusable.
-Only one surface may ask for `Exclusive` at a time; two is a race.
+**Keyboard focus and `HyprlandFocusGrab` fight, and the dashboard loses.**
+Read this before touching panel dismissal. `Escape` closing the dashboard is
+**still unimplemented** after two attempts that each broke it worse:
 
-**`HyprlandFocusGrab` dismisses on a focus change to any surface outside its
-window list — including one of your own.** The dashboard's grab listed only the
-bar, so the moment a keyboard-catching surface took focus, the grab cleared and
-closed the panel: it flashed open and vanished, from the keybind and from a
-click alike. Adding a focus mechanism next to an existing grab means **adding
-its window to that grab**, and mapping it once up front rather than at the same
-instant the grab activates — the grab commits its surface list when it becomes
-active, so a surface that appears in the same turn may not be in it.
+1. Added `PanelKeys`, a surface that takes `Exclusive` keyboard focus while a
+   panel is open. The dashboard flashed open and closed instantly. Cause: the
+   notch runs a `HyprlandFocusGrab` while the dashboard is up — that is what
+   dismisses it on a click elsewhere — and a grab clears on a focus change to
+   **any** surface outside its window list, including one of the shell's own.
+2. Whitelisted `PanelKeys` in that grab and kept it permanently mapped to avoid
+   racing the grab's surface-list commit. The dashboard then did not open at
+   all. Root cause not established.
+
+Both were reverted. What is actually known: a layer surface with no keyboard
+focus cannot see a key, so there is nothing for `Keys.onEscapePressed` to hang
+off; layer-shell keyboard interactivity is independent of the input region, so a
+surface *can* hold keys while accepting no clicks (`mask: Region {}`); only one
+surface may hold `Exclusive` at a time. What is not known is how Hyprland
+sequences a focus grab against a layer surface changing its keyboard
+interactivity — and that is the thing to establish, **from a running session**,
+before attempting this a third time. `hyprctl layers` and the grab's `cleared`
+signal are the instruments.
+
+The lesson that generalises: **two mechanisms that both move focus will fight,
+and the symptom appears on the feature that was already working.** Neither
+attempt was visible as a bug in review; both needed the compositor to show.
 
 **Nerd Font glyphs vanish in transit, and nothing complains.** They live in the
 Unicode private use area. A terminal renders them as nothing, `cat` and the file

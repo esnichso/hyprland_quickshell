@@ -38,10 +38,6 @@ ShellRoot {
     // win by luck.
     Launcher {}
 
-    // Escape closes whatever panel is open. Exists only while one is — see the
-    // file for why this is a surface of its own rather than a property on Bar.
-    PanelKeys {}
-
     // Every panel keybind in conf/binds.lua routes through here:
     //   qs ipc call panels toggle <name>
     IpcHandler {
