@@ -58,6 +58,14 @@ The whole point of the shell being one process is that every panel has a key.
 | `SUPER` + `Escape` | Lock the screen — hyprlock |
 | `Escape` | Close whatever shell surface is open |
 
+`Escape` is **not** a compositor bind — it could not be, or it would be
+swallowed before every application that needs it. It is handled by
+`PanelKeys.qml`, a one-pixel transparent surface that exists only while a panel
+is open and holds the keyboard while it does. The consequence worth knowing:
+**an open panel takes keyboard focus from the window behind it.** The panel
+stays glanceable and clickable-through (DESIGN §6), but you cannot type into
+your editor while the dashboard is up. Closing it hands focus straight back.
+
 `SUPER+Escape` for lock rather than `SUPER+L`: `L` is needed for focus-right
 in the hjkl row, and lock is something you want *away* from anything you hit
 by accident.

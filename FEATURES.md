@@ -35,9 +35,18 @@ shell crash costs you a bar, a lock-screen crash costs you the session.
 
 **Source:** `Quickshell.Hyprland` — `Hyprland.workspaces`, `Hyprland.focusedWorkspace`
 
-Ten workspaces, but only the interesting ones are drawn: every workspace that
-has windows, plus the focused one, plus workspace 1. Empty trailing
+Ten workspaces, but only the interesting ones are drawn: every workspace
+Hyprland reports, plus the focused one, plus workspace 1. Empty trailing
 workspaces don't take up space.
+
+Hyprland only keeps a workspace alive while it holds windows or is focused, so
+its list is *already* the interesting set — filtering it again by window count
+is wrong, and was the bug that made a workspace invisible until you switched to
+it. Occupancy for the filled-vs-hollow styling comes from
+`HyprlandWorkspace.toplevels`, a live model, **never** from
+`lastIpcObject.windows` — that is a snapshot of `hyprctl workspaces` refreshed
+on workspace events, not on window events, so it is stale exactly when a window
+has just opened.
 
 | State | Appearance |
 | --- | --- |

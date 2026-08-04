@@ -336,6 +336,21 @@ singletons for this reason — bind to them, do not re-instantiate.
 **Do not name a component the same as one in a directory it imports.** A
 `widgets/Bar.qml` would have shadowed `bar/Bar.qml`, which imports `root:/widgets`.
 
+**`lastIpcObject` is a snapshot, not a live value.** It holds whatever
+`hyprctl <thing>` last returned, and quickshell only re-runs that on events for
+*that* thing — `Hyprland.workspaces` refreshes on workspace events, not on
+window events. Reading `lastIpcObject.windows` to decide whether a workspace has
+windows therefore answered with the state from before the window opened, and the
+workspace island lagged one step behind reality. Prefer the typed live model
+(`workspace.toplevels`, an ObjectModel) whenever the value has to react.
+
+**A layer surface with no keyboard focus cannot see a key, so there is nothing
+for `Keys.onEscapePressed` to hang off.** Layer-shell keyboard interactivity is
+independent of the input region, though — a surface can hold the keyboard while
+accepting no pointer events at all (`mask: Region {}`). That is how `Escape`
+closes a panel drawn inside the bar without making the bar itself focusable.
+Only one surface may ask for `Exclusive` at a time; two is a race.
+
 **Nerd Font glyphs vanish in transit, and nothing complains.** They live in the
 Unicode private use area. A terminal renders them as nothing, `cat` and the file
 viewer show nothing, and a heredoc or a rewriting tool can drop them silently —

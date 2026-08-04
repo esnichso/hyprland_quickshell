@@ -28,18 +28,8 @@ import "root:/widgets"
 PanelWindow {
     id: root
 
-    // Panels on the focused monitor. Comparing through monitorFor() rather than
-    // by name keeps this to documented API on both sides.
-    screen: {
-        const focused = Hyprland.focusedMonitor;
-        if (!focused)
-            return null;
-        const screens = Quickshell.screens;
-        for (let i = 0; i < screens.length; i++)
-            if (Hyprland.monitorFor(screens[i]) === focused)
-                return screens[i];
-        return null;
-    }
+    // Panels appear on the focused monitor.
+    screen: Panels.focusedScreen
 
     visible: Panels.launcher
 

@@ -12,9 +12,24 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 
 Singleton {
     id: root
+
+    // The screen a panel should appear on. Resolved through monitorFor() rather
+    // than by comparing names, which keeps it to documented API on both sides.
+    // Null means "quickshell picks", which is correct for a single display.
+    readonly property var focusedScreen: {
+        const focused = Hyprland.focusedMonitor;
+        if (!focused)
+            return null;
+        const screens = Quickshell.screens;
+        for (let i = 0; i < screens.length; i++)
+            if (Hyprland.monitorFor(screens[i]) === focused)
+                return screens[i];
+        return null;
+    }
 
     // Phase 2d ships the dashboard. The rest are declared here so the IPC
     // surface and the close-everything logic are complete from the start; each

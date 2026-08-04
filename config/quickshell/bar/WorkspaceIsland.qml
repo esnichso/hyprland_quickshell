@@ -21,11 +21,14 @@ IslandSurface {
 
     // Hyprland's workspace list includes special workspaces with negative ids;
     // the scratchpad is reached by keybind, not by clicking a dot.
+    //
+    // Everything Hyprland reports is shown. Hyprland only keeps a workspace
+    // alive while it holds windows or is focused, so membership in this list
+    // ALREADY means "interesting" — filtering it again by window count was the
+    // bug that made workspace 3 invisible from workspace 1. See windowCount().
     readonly property var shown: {
-        const all = Hyprland.workspaces.values.filter(w => w && w.id > 0);
+        const keep = Hyprland.workspaces.values.filter(w => w && w.id > 0);
         const focusedId = Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1;
-
-        const keep = all.filter(w => windowCount(w) > 0 || w.id === focusedId || w.id === 1);
 
         // A workspace you have switched to but not yet opened anything on is
         // not in Hyprland's list on some versions. Synthesise it so the dot
@@ -33,13 +36,26 @@ IslandSurface {
         if (!keep.some(w => w.id === focusedId))
             keep.push({ id: focusedId, urgent: false });
 
+        // Workspace 1 is always shown, so the island never renders empty.
+        if (!keep.some(w => w.id === 1))
+            keep.push({ id: 1, urgent: false });
+
         return keep.sort((a, b) => a.id - b.id);
     }
 
+    // Reads the LIVE toplevel model, not lastIpcObject.
+    //
+    // lastIpcObject is a snapshot of `hyprctl workspaces` taken the last time
+    // quickshell refreshed the workspace list — which happens on workspace
+    // events, not on window events. Opening a window therefore did not update
+    // the count, so a workspace you had just put a window on still read as
+    // empty, and the display lagged a step behind reality: from workspace 1 you
+    // saw 1 and 2, and only from 2 did 3 appear.
+    //
+    // toplevels is an ObjectModel that tracks windows as they open and close.
+    // Anything that has to react to a window appearing must read it.
     function windowCount(w) {
-        // lastIpcObject is the raw payload from Hyprland's IPC. Guarded
-        // because its shape is not part of any stability guarantee.
-        return w && w.lastIpcObject && w.lastIpcObject.windows ? w.lastIpcObject.windows : 0;
+        return w && w.toplevels ? w.toplevels.values.length : 0;
     }
 
     MouseArea {
