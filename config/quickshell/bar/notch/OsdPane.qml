@@ -21,8 +21,8 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: Osd.glyph
             color: Osd.warn ? Theme.error
-                 : Osd.value === 0 ? Theme.onSurfaceVariant
-                 : Theme.onSurface
+                 : Osd.value === 0 ? Theme.textOnSurfaceVariant
+                 : Theme.textOnSurface
         }
 
         LevelBar {
@@ -36,7 +36,7 @@ Item {
             id: valueText
             anchors.verticalCenter: parent.verticalCenter
             text: Osd.label
-            color: Theme.onSurfaceVariant
+            color: Theme.textOnSurfaceVariant
             font.family: "Inter"
             font.pixelSize: 11
             font.features: ({ "tnum": 1 })

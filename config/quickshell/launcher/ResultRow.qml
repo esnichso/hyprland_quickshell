@@ -94,7 +94,7 @@ Item {
                 // emoji font that covers none of them.
                 font.family: root.isTextFace ? "Inter" : "Noto Color Emoji"
                 font.pixelSize: root.isTextFace ? 12 : 17
-                color: Theme.onSurface
+                color: Theme.textOnSurface
             }
 
             Glyph {
@@ -103,7 +103,7 @@ Item {
                                        && root.item.glyph !== ""
                 text: root.item ? root.item.glyph : ""
                 font.pixelSize: 15
-                color: root.isInfo ? Theme.error : Theme.onSurfaceVariant
+                color: root.isInfo ? Theme.error : Theme.textOnSurfaceVariant
             }
         }
 
@@ -117,7 +117,7 @@ Item {
             Text {
                 width: parent.width
                 text: root.item ? root.item.title : ""
-                color: root.isInfo ? Theme.error : Theme.onSurface
+                color: root.isInfo ? Theme.error : Theme.textOnSurface
                 font.family: root.literal ? "JetBrainsMono Nerd Font" : "Inter"
                 font.pixelSize: root.literal ? 12 : 13
                 font.weight: root.selected ? Font.DemiBold : Font.Normal
@@ -129,7 +129,7 @@ Item {
                 width: parent.width
                 visible: text !== ""
                 text: root.item ? root.item.subtitle : ""
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "Inter"
                 font.pixelSize: 11
                 elide: Text.ElideRight
@@ -151,7 +151,7 @@ Item {
                 id: badgeText
                 anchors.centerIn: parent
                 text: root.item ? root.item.badge : ""
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "JetBrainsMono Nerd Font"
                 font.pixelSize: 9
             }

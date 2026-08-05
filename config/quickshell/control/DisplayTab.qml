@@ -75,7 +75,7 @@ Item {
                     width: 32
                     horizontalAlignment: Text.AlignRight
                     text: `${Brightness.screen}%`
-                    color: Theme.onSurfaceVariant
+                    color: Theme.textOnSurfaceVariant
                     font.family: "Inter"; font.pixelSize: 11
                     font.features: ({ "tnum": 1 })
                 }
@@ -147,7 +147,7 @@ Item {
                     anchors.leftMargin: 18
                     anchors.verticalCenter: parent.verticalCenter
                     text: Icons.moon
-                    color: Sunset.enabled ? Theme.primary : Theme.onSurfaceVariant
+                    color: Sunset.enabled ? Theme.primary : Theme.textOnSurfaceVariant
                     font.pixelSize: 13
                 }
 
@@ -158,7 +158,7 @@ Item {
                     text: Sunset.error !== "" ? Sunset.error
                         : Sunset.enabled ? `${Sunset.temperature}K`
                         : "Off"
-                    color: Sunset.error !== "" ? Theme.error : Theme.onSurfaceVariant
+                    color: Sunset.error !== "" ? Theme.error : Theme.textOnSurfaceVariant
                     font.family: "Inter"; font.pixelSize: 11
                     font.features: ({ "tnum": 1 })
                 }
@@ -239,7 +239,7 @@ Item {
                 // The 1.25-vs-1.6 question is open until this runs on the real
                 // panel; CLAUDE.md says not to quietly assume either.
                 text: "Applies until the next reload. Set it in conf/monitors.lua to keep it."
-                color: Qt.alpha(Theme.onSurfaceVariant, 0.7)
+                color: Qt.alpha(Theme.textOnSurfaceVariant, 0.7)
                 font.family: "Inter"; font.pixelSize: 10
                 wrapMode: Text.Wrap
             }
@@ -328,7 +328,7 @@ Item {
             anchors.left: parent.left
             anchors.leftMargin: 18
             anchors.verticalCenter: parent.verticalCenter
-            color: Theme.onSurfaceVariant
+            color: Theme.textOnSurfaceVariant
             font.family: "JetBrainsMono Nerd Font"
             font.pixelSize: 10
             font.capitalization: Font.AllUppercase
@@ -359,7 +359,7 @@ Item {
             id: segLabel
             anchors.centerIn: parent
             text: seg.text
-            color: seg.selected ? Theme.primary : Theme.onSurfaceVariant
+            color: seg.selected ? Theme.primary : Theme.textOnSurfaceVariant
             font.family: "Inter"; font.pixelSize: 11
             font.weight: seg.selected ? Font.DemiBold : Font.Normal
         }

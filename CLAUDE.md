@@ -306,6 +306,13 @@ any user session exists, so no symlink into `~/.config` is visible to it and
 themes in `/usr/share/sddm/themes/`, and installing a theme means **copying**,
 not symlinking. Preview with `sddm-greeter-qt6 --test-mode --theme <dir>`.
 
+**Ask a tool what it prints before grepping it.** `check.sh` reported a healthy
+desktop as broken twice on one line each: `pgrep -x quickshell` never matches,
+because the binary is `qs`; and `qs list` lists running *instances* ("Instance
+6zzgsajt: Process ID: 1266"), not configurations, so grepping it for `default`
+always failed. Both greps were written from an assumption about output nobody
+had read — the same failure as writing a layer namespace from memory.
+
 **Verify package names against live APIs, not memory.** Real corrections found
 this way in v1: `rofi-wayland` no longer exists, `hyprland-qtutils` →
 `hyprland-guiutils`, `ttf-font-awesome` → `otf-font-awesome`. Also check what an
@@ -344,6 +351,32 @@ exist. The full surface is discoverable:
 `grep -rhoE "hl\.[a-z_]+\(" docs/hyprland/ | sort -u`.
 
 ### QuickShell and QML
+
+**A property named `onX` is dead if the same object also declares `X`.** QML
+reserves `on` + Capital for signal handlers, so `readonly property color
+onSurface:` beside `property color surface:` silently loses its **binding** —
+the property keeps its default, and the default for a `color` is **black**.
+Nothing warns, and the declaration reads perfectly.
+
+This shipped and cost two rounds. Every `Text` asking for `Theme.onSurface`
+drew black on a dark island — the clock, the launcher input, every result row —
+while `Theme.onSurfaceVariant` on the next line was fine, because no
+`surfaceVariant` role exists. So the roles are named `textOnSurface`,
+`textOnSurfaceVariant`, `textOnPrimary`, and `check.sh`'s qml lint fails on any
+`onX` declared alongside `X`.
+
+Two method lessons, both worth more than the fix:
+
+- **Measure the screenshot.** Two rounds went into the palette because reading
+  the code could not distinguish "the colour is wrong" from "the binding never
+  ran". Sampling pixels answered it in one step: the pill is `#4e4f54`, the
+  time's glyphs bottom out at `#0c0d11`, and the date beside it in the same
+  `Row` is light. `PIL` is on the dev host; a user screenshot is data, not
+  illustration.
+- **Look for the working neighbour.** The bug was not "onSurface is black", it
+  was "onSurface is black *and onSurfaceVariant is not*". The asymmetry between
+  two adjacent lines is what identified the mechanism; either line alone would
+  have kept pointing at the palette.
 
 **Read the LAST "caused by" line, not the first.** A single bad property aborts
 its file, and every type that imports it then reports "Type X unavailable", so

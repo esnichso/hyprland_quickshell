@@ -216,7 +216,7 @@ PanelWindow {
                         anchors.verticalCenterOffset: 3
                         text: Icons.clock
                         font.pixelSize: 10
-                        color: Qt.alpha(Theme.onSurfaceVariant, 0.7)
+                        color: Qt.alpha(Theme.textOnSurfaceVariant, 0.7)
                     }
 
                     Text {
@@ -224,7 +224,7 @@ PanelWindow {
                         anchors.leftMargin: 8
                         anchors.verticalCenter: clockIcon.verticalCenter
                         text: Session.uptimeText()
-                        color: Qt.alpha(Theme.onSurfaceVariant, 0.7)
+                        color: Qt.alpha(Theme.textOnSurfaceVariant, 0.7)
                         font.family: "Inter"; font.pixelSize: 10
                     }
 
@@ -295,7 +295,7 @@ PanelWindow {
             font.pixelSize: 15
             color: row.pending ? Theme.error
                  : row.selected ? Theme.primary
-                 : Theme.onSurfaceVariant
+                 : Theme.textOnSurfaceVariant
         }
 
         Column {
@@ -311,7 +311,7 @@ PanelWindow {
                 text: row.pending && row.action
                     ? `${row.action.label}? Enter to confirm`
                     : row.action ? row.action.label : ""
-                color: row.pending ? Theme.error : Theme.onSurface
+                color: row.pending ? Theme.error : Theme.textOnSurface
                 font.family: "Inter"; font.pixelSize: 13
                 font.weight: row.selected ? Font.DemiBold : Font.Normal
                 elide: Text.ElideRight
@@ -321,7 +321,7 @@ PanelWindow {
                 width: parent.width
                 text: row.pending ? "Escape to cancel"
                     : row.action ? row.action.detail : ""
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "Inter"; font.pixelSize: 10
                 elide: Text.ElideRight
             }
@@ -339,7 +339,7 @@ PanelWindow {
             Text {
                 anchors.centerIn: parent
                 text: row.action ? row.action.hint : ""
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "JetBrainsMono Nerd Font"
                 font.pixelSize: 10
             }

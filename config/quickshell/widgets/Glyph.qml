@@ -10,7 +10,7 @@ import "root:/"
 Text {
     font.family: "Symbols Nerd Font"
     font.pixelSize: 14
-    color: Theme.onSurfaceVariant
+    color: Theme.textOnSurfaceVariant
     verticalAlignment: Text.AlignVCenter
     renderType: Text.NativeRendering
 

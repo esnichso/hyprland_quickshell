@@ -61,7 +61,7 @@ Item {
                 anchors.leftMargin: 16
                 anchors.verticalCenter: parent.verticalCenter
                 text: Net.wifiEnabled ? Icons.wifi : Icons.wifiOff
-                color: Net.wifiEnabled ? Theme.primary : Theme.onSurfaceVariant
+                color: Net.wifiEnabled ? Theme.primary : Theme.textOnSurfaceVariant
                 font.pixelSize: 14
             }
 
@@ -70,7 +70,7 @@ Item {
                 anchors.leftMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
                 text: Net.wifiBlocked ? "Wi-Fi — blocked by hardware switch" : "Wi-Fi"
-                color: Theme.onSurface
+                color: Theme.textOnSurface
                 font.family: "Inter"
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
@@ -113,13 +113,13 @@ Item {
 
                 Text {
                     text: "Wired"
-                    color: Theme.onSurface
+                    color: Theme.textOnSurface
                     font.family: "Inter"; font.pixelSize: 12
                     font.weight: Font.DemiBold
                 }
                 Text {
                     text: Net.wiredDevice ? Net.wiredDevice.name : ""
-                    color: Theme.onSurfaceVariant
+                    color: Theme.textOnSurfaceVariant
                     font.family: "Inter"; font.pixelSize: 10
                 }
             }
@@ -139,7 +139,7 @@ Item {
             width: parent.width
             visible: !Net.hasWifi
             text: "No Wi-Fi device"
-            color: Theme.onSurfaceVariant
+            color: Theme.textOnSurfaceVariant
             font.family: "Inter"; font.pixelSize: 12
             horizontalAlignment: Text.AlignHCenter
             topPadding: 14; bottomPadding: 14
@@ -149,7 +149,7 @@ Item {
             width: parent.width
             visible: Net.hasWifi && !Net.wifiEnabled
             text: "Wi-Fi is off"
-            color: Theme.onSurfaceVariant
+            color: Theme.textOnSurfaceVariant
             font.family: "Inter"; font.pixelSize: 12
             horizontalAlignment: Text.AlignHCenter
             topPadding: 14; bottomPadding: 14
@@ -159,7 +159,7 @@ Item {
             width: parent.width
             visible: Net.hasWifi && Net.wifiEnabled && Net.networks.length === 0
             text: "Scanning…"
-            color: Qt.alpha(Theme.onSurfaceVariant, 0.7)
+            color: Qt.alpha(Theme.textOnSurfaceVariant, 0.7)
             font.family: "Inter"; font.pixelSize: 12
             horizontalAlignment: Text.AlignHCenter
             topPadding: 14; bottomPadding: 14
@@ -272,7 +272,7 @@ Item {
             anchors.leftMargin: 18
             y: 14
             level: Net.bars(row.network)
-            color: row.connected ? Theme.primary : Theme.onSurfaceVariant
+            color: row.connected ? Theme.primary : Theme.textOnSurfaceVariant
         }
 
         Column {
@@ -288,7 +288,7 @@ Item {
 
                 Text {
                     text: row.label
-                    color: Theme.onSurface
+                    color: Theme.textOnSurface
                     font.family: "Inter"; font.pixelSize: 12
                     font.weight: row.connected ? Font.DemiBold : Font.Normal
                     elide: Text.ElideRight
@@ -299,7 +299,7 @@ Item {
                     visible: Net.secured(row.network)
                     text: Icons.lock
                     font.pixelSize: 9
-                    color: Theme.onSurfaceVariant
+                    color: Theme.textOnSurfaceVariant
                 }
             }
 
@@ -309,7 +309,7 @@ Item {
                     : row.connected ? "Connected"
                     : row.network && row.network.known ? `Saved · ${Net.securityLabel(row.network)}`
                     : Net.securityLabel(row.network)
-                color: row.failure !== "" ? Theme.error : Theme.onSurfaceVariant
+                color: row.failure !== "" ? Theme.error : Theme.textOnSurfaceVariant
                 font.family: "Inter"; font.pixelSize: 10
                 elide: Text.ElideRight
             }
@@ -345,7 +345,7 @@ Item {
                 anchors.leftMargin: 10
                 anchors.rightMargin: 10
                 verticalAlignment: Text.AlignVCenter
-                color: Theme.onSurface
+                color: Theme.textOnSurface
                 font.family: "Inter"; font.pixelSize: 12
                 echoMode: TextInput.Password
                 selectByMouse: true
@@ -380,7 +380,7 @@ Item {
                     verticalAlignment: Text.AlignVCenter
                     visible: psk.text === ""
                     text: "Password, then Enter"
-                    color: Qt.alpha(Theme.onSurfaceVariant, 0.55)
+                    color: Qt.alpha(Theme.textOnSurfaceVariant, 0.55)
                     font.family: "Inter"; font.pixelSize: 11
                 }
             }

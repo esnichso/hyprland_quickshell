@@ -84,7 +84,7 @@ Item {
             Text {
                 width: root.weekColWidth; height: 18
                 text: "KW"
-                color: Qt.alpha(Theme.onSurfaceVariant, 0.5)
+                color: Qt.alpha(Theme.textOnSurfaceVariant, 0.5)
                 font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
@@ -96,7 +96,7 @@ Item {
                     required property string modelData
                     width: root.dayWidth; height: 18
                     text: modelData
-                    color: Theme.onSurfaceVariant
+                    color: Theme.textOnSurfaceVariant
                     font.family: "Inter"; font.pixelSize: 9
                     font.weight: Font.DemiBold
                     horizontalAlignment: Text.AlignHCenter
@@ -117,7 +117,7 @@ Item {
                 Text {
                     width: root.weekColWidth; height: 20
                     text: modelData.week
-                    color: Qt.alpha(Theme.onSurfaceVariant, 0.45)
+                    color: Qt.alpha(Theme.textOnSurfaceVariant, 0.45)
                     font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 9
                     font.features: ({ "tnum": 1 })
                     horizontalAlignment: Text.AlignHCenter
@@ -142,8 +142,8 @@ Item {
                             anchors.centerIn: parent
                             text: modelData.day
                             color: modelData.isToday ? Theme.surface
-                                 : modelData.outside ? Qt.alpha(Theme.onSurfaceVariant, 0.3)
-                                 : Theme.onSurfaceVariant
+                                 : modelData.outside ? Qt.alpha(Theme.textOnSurfaceVariant, 0.3)
+                                 : Theme.textOnSurfaceVariant
                             font.family: "Inter"
                             font.pixelSize: 11
                             font.weight: modelData.isToday ? Font.Bold : Font.Normal

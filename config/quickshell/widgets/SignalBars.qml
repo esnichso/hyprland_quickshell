@@ -14,7 +14,7 @@ Item {
 
     // 0..4. Net.bars() is the single place that maps strength to this.
     property int level: 0
-    property color color: Theme.onSurfaceVariant
+    property color color: Theme.textOnSurfaceVariant
     property bool dimmed: false
 
     implicitWidth: 14

@@ -162,7 +162,7 @@ PanelWindow {
 
                             Text {
                                 text: `swap ${Sys.bytes(Sys.swapUsed)} / ${Sys.bytes(Sys.swapTotal)}`
-                                color: Theme.onSurfaceVariant
+                                color: Theme.textOnSurfaceVariant
                                 font.family: "Inter"; font.pixelSize: 10
                             }
                         }
@@ -188,7 +188,7 @@ PanelWindow {
                                     anchors.top: parent.top
                                     width: parent.width * 0.5
                                     text: modelData.mount
-                                    color: Theme.onSurface
+                                    color: Theme.textOnSurface
                                     font.family: "Inter"; font.pixelSize: 11
                                     elide: Text.ElideMiddle
                                 }
@@ -197,7 +197,7 @@ PanelWindow {
                                     anchors.right: parent.right
                                     anchors.top: parent.top
                                     text: `${Sys.bytes(modelData.used)} / ${Sys.bytes(modelData.size)}`
-                                    color: Theme.onSurfaceVariant
+                                    color: Theme.textOnSurfaceVariant
                                     font.family: "Inter"; font.pixelSize: 10
                                     font.features: ({ "tnum": 1 })
                                 }
@@ -306,7 +306,7 @@ PanelWindow {
                                     anchors.verticalCenter: parent.verticalCenter
                                     width: parent.width - 150
                                     text: modelData.name
-                                    color: Theme.onSurface
+                                    color: Theme.textOnSurface
                                     font.family: "Inter"; font.pixelSize: 11
                                     elide: Text.ElideRight
                                 }
@@ -316,7 +316,7 @@ PanelWindow {
                                     anchors.rightMargin: 12
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: `${modelData.cpu.toFixed(1)}%`
-                                    color: modelData.cpu > 50 ? Theme.error : Theme.onSurfaceVariant
+                                    color: modelData.cpu > 50 ? Theme.error : Theme.textOnSurfaceVariant
                                     font.family: "Inter"; font.pixelSize: 10
                                     font.features: ({ "tnum": 1 })
                                 }
@@ -327,7 +327,7 @@ PanelWindow {
                                     anchors.rightMargin: 12
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: `${modelData.mem.toFixed(1)}%`
-                                    color: Theme.onSurfaceVariant
+                                    color: Theme.textOnSurfaceVariant
                                     font.family: "Inter"; font.pixelSize: 10
                                     font.features: ({ "tnum": 1 })
                                 }
@@ -341,7 +341,7 @@ PanelWindow {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: Icons.close
                                     font.pixelSize: 10
-                                    color: killMa.containsMouse ? Theme.error : Qt.alpha(Theme.onSurfaceVariant, 0.5)
+                                    color: killMa.containsMouse ? Theme.error : Qt.alpha(Theme.textOnSurfaceVariant, 0.5)
 
                                     MouseArea {
                                         id: killMa
@@ -385,7 +385,7 @@ PanelWindow {
                 anchors.leftMargin: 18
                 anchors.verticalCenter: parent.verticalCenter
                 text: group.title
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "JetBrainsMono Nerd Font"
                 font.pixelSize: 10
                 font.capitalization: Font.AllUppercase
@@ -401,7 +401,7 @@ PanelWindow {
                 Text {
                     text: group.extra
                     visible: text !== ""
-                    color: group.extraWarn ? Theme.error : Theme.onSurfaceVariant
+                    color: group.extraWarn ? Theme.error : Theme.textOnSurfaceVariant
                     font.family: "Inter"; font.pixelSize: 11
                     font.features: ({ "tnum": 1 })
                 }
@@ -409,7 +409,7 @@ PanelWindow {
                 Text {
                     text: group.value
                     visible: text !== ""
-                    color: Theme.onSurface
+                    color: Theme.textOnSurface
                     font.family: "Inter"; font.pixelSize: 11
                     font.weight: Font.DemiBold
                     font.features: ({ "tnum": 1 })
@@ -431,7 +431,7 @@ PanelWindow {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: detail.label
-            color: Theme.onSurfaceVariant
+            color: Theme.textOnSurfaceVariant
             font.family: "Inter"; font.pixelSize: 11
         }
 
@@ -439,7 +439,7 @@ PanelWindow {
             id: valueText
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            color: Theme.onSurface
+            color: Theme.textOnSurface
             font.family: "Inter"; font.pixelSize: 11
             font.features: ({ "tnum": 1 })
         }

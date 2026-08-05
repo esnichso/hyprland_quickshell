@@ -95,17 +95,23 @@ else
     no "no shell.qml anywhere under ~/.config/quickshell — run install.sh --link"
 fi
 
-if command -v qs >/dev/null; then
-    # `qs list` reports what quickshell can see, which is the only opinion
-    # that matters.
-    if qs list 2>/dev/null | grep -qi 'default'; then
-        ok "quickshell sees a default config"
-    else
-        no "quickshell does not see a default config: $(qs list 2>&1 | head -2 | tr '\n' ' ')"
-    fi
-fi
-
-if pgrep -x quickshell >/dev/null; then
+# Is the shell up?
+#
+# TWO WRONG ANSWERS SHIPPED HERE, both of which called a running desktop broken:
+#
+#   `pgrep -x quickshell` — the binary on PATH is `qs`, and -x matches the
+#   process name exactly, so this never found the process that was drawing the
+#   bar in front of you.
+#
+#   `qs list | grep default` — `qs list` reports running INSTANCES ("Instance
+#   6zzgsajt: Process ID: 1266"), not configurations, so the word "default"
+#   never appears and the check failed on a healthy session.
+#
+# Both were written from an assumption about output nobody had read. Ask the
+# tool what it prints before grepping it.
+if command -v qs >/dev/null && qs list 2>/dev/null | grep -qi 'instance'; then
+    ok "quickshell running: $(qs list 2>/dev/null | grep -io 'instance [a-z0-9]*' | head -1)"
+elif pgrep -x qs >/dev/null || pgrep -x quickshell >/dev/null; then
     ok "quickshell running"
 else
     no "quickshell not running — start it: uwsm app -- qs"
@@ -425,6 +431,17 @@ if not qml:
 INT_PROPS = ["font.pixelSize", "font.weight", "maximumLineCount",
              "interval", "elideWidth", "cursorPosition"]
 
+# A property named onX declared on an object that also declares X. QML reserves
+# `on` + Capital for signal handlers, and the collision silently costs the
+# property its BINDING: it keeps its default value, which for a color is BLACK.
+#
+# This shipped. Theme declared `surface` and `onSurface`, and every piece of
+# text in the shell that asked for Theme.onSurface drew black on a dark island
+# — the clock, the launcher, every result row. Theme.onSurfaceVariant next to it
+# worked, because no `surfaceVariant` was declared. Nothing warned, and the diff
+# looks perfectly reasonable.
+DECL = re.compile(r"^\s*(?:readonly\s+)?property\s+\w+\s+(\w+)\s*:")
+
 # An icon slot assigned a bare empty string, and a glyph map entry that is
 # empty. Both mean a private-use character was lost, not that a blank was
 # intended — intent is spelled root.noGlyph.
@@ -469,7 +486,24 @@ def scan(line):
 bad = []
 for f in qml:
     in_glyph_map = False
-    for i, line in enumerate(f.read_text().splitlines(), 1):
+    lines = f.read_text().splitlines()
+
+    # File-granular, which is right for the case that matters: the palette
+    # singleton declares every role on one object. A false positive would need
+    # two sibling objects in one file where one declares X and the other onX.
+    declared = {m.group(1) for m in (DECL.match(l) for l in lines) if m}
+    for name in sorted(declared):
+        if name.startswith("on") and len(name) > 2 and name[2].isupper():
+            sibling = name[2].lower() + name[3:]
+            if sibling in declared:
+                i = next(j for j, l in enumerate(lines, 1)
+                         if DECL.match(l) and DECL.match(l).group(1) == name)
+                bad.append((f.relative_to(repo), i,
+                            f"property '{name}' collides with '{sibling}'",
+                            "QML treats on+Capital as a signal handler; "
+                            "the binding is dropped and the value stays default"))
+
+    for i, line in enumerate(lines, 1):
         code, unterminated = scan(line)
 
         if GLYPH_MAP_OPEN.search(code):

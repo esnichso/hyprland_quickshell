@@ -102,7 +102,7 @@ IslandSurface {
 
                 color: focused ? Theme.primary
                      : urgent ? Theme.error
-                     : occupied ? Theme.onSurfaceVariant
+                     : occupied ? Theme.textOnSurfaceVariant
                      : "transparent"
 
                 border.width: (focused || urgent || occupied) ? 0 : 1.5

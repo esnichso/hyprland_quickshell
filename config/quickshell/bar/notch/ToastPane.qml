@@ -83,7 +83,7 @@ Item {
             Text {
                 width: parent.width
                 text: root.n ? root.n.appName : ""
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "Inter"
                 font.pixelSize: 11
                 elide: Text.ElideRight
@@ -92,7 +92,7 @@ Item {
             Text {
                 width: parent.width
                 text: root.n ? root.n.summary : ""
-                color: root.critical ? Theme.error : Theme.onSurface
+                color: root.critical ? Theme.error : Theme.textOnSurface
                 font.family: "Inter"
                 font.pixelSize: 13
                 font.weight: Font.DemiBold
@@ -103,7 +103,7 @@ Item {
                 width: parent.width
                 visible: text !== ""
                 text: root.n ? root.n.body : ""
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "Inter"
                 font.pixelSize: 12
                 elide: Text.ElideRight
@@ -129,7 +129,7 @@ Item {
                 id: countText
                 anchors.centerIn: parent
                 text: `+${Notifs.stacked}`
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "JetBrainsMono Nerd Font"
                 font.pixelSize: 11
             }

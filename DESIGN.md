@@ -262,8 +262,8 @@ Everything in the shell references a role, never a hex value:
 | Island background | `surfaceContainer` | `0.72` |
 | Island border (1px, inset) | `outline` | `0.18` |
 | Panel background | `surfaceContainerLow` | `0.86` |
-| Primary text | `onSurface` | `1.0` |
-| Secondary text, icons at rest | `onSurfaceVariant` | `1.0` |
+| Primary text | `textOnSurface` | `1.0` |
+| Secondary text, icons at rest | `textOnSurfaceVariant` | `1.0` |
 | Active workspace, sliders, focus ring | `primary` | `1.0` |
 | Critical notification, battery < 15% | `error` | `1.0` |
 | Hyprland active border | `primary` → `tertiary` gradient, 45° | — |

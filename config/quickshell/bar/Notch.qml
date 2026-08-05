@@ -123,7 +123,7 @@ IslandSurface {
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: Qt.formatDateTime(clock.date, Config.clock.timeFormat)
-                color: Theme.onSurface
+                color: Theme.textOnSurface
                 font.family: "Inter"
                 font.pixelSize: 13
                 font.weight: Font.Medium
@@ -135,7 +135,7 @@ IslandSurface {
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: Qt.formatDateTime(clock.date, Config.clock.dateFormat)
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "Inter"
                 font.pixelSize: 11
             }

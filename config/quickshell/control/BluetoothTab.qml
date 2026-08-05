@@ -48,7 +48,7 @@ Item {
                 anchors.leftMargin: 16
                 anchors.verticalCenter: parent.verticalCenter
                 text: Icons.bluetooth
-                color: Bt.enabled ? Theme.primary : Theme.onSurfaceVariant
+                color: Bt.enabled ? Theme.primary : Theme.textOnSurfaceVariant
                 font.pixelSize: 14
             }
 
@@ -57,7 +57,7 @@ Item {
                 anchors.leftMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
                 text: Bt.available ? "Bluetooth" : "No Bluetooth adapter"
-                color: Theme.onSurface
+                color: Theme.textOnSurface
                 font.family: "Inter"; font.pixelSize: 13
                 font.weight: Font.DemiBold
             }
@@ -83,7 +83,7 @@ Item {
                 anchors.leftMargin: 42
                 anchors.verticalCenter: parent.verticalCenter
                 text: Bt.discovering ? "Scanning for devices…" : "Scan for devices"
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "Inter"; font.pixelSize: 11
             }
 
@@ -100,7 +100,7 @@ Item {
             width: parent.width
             visible: Bt.available && !Bt.enabled
             text: "Bluetooth is off"
-            color: Theme.onSurfaceVariant
+            color: Theme.textOnSurfaceVariant
             font.family: "Inter"; font.pixelSize: 12
             horizontalAlignment: Text.AlignHCenter
             topPadding: 14; bottomPadding: 14
@@ -110,7 +110,7 @@ Item {
             width: parent.width
             visible: Bt.enabled && Bt.devices.length === 0
             text: "No devices"
-            color: Qt.alpha(Theme.onSurfaceVariant, 0.7)
+            color: Qt.alpha(Theme.textOnSurfaceVariant, 0.7)
             font.family: "Inter"; font.pixelSize: 12
             horizontalAlignment: Text.AlignHCenter
             topPadding: 14; bottomPadding: 14
@@ -207,7 +207,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             visible: !icon.visible
             text: Icons.bluetooth
-            color: row.connected ? Theme.primary : Theme.onSurfaceVariant
+            color: row.connected ? Theme.primary : Theme.textOnSurfaceVariant
             font.pixelSize: 13
         }
 
@@ -222,7 +222,7 @@ Item {
             Text {
                 width: parent.width
                 text: Bt.label(row.device)
-                color: Theme.onSurface
+                color: Theme.textOnSurface
                 font.family: "Inter"; font.pixelSize: 12
                 font.weight: row.connected ? Font.DemiBold : Font.Normal
                 elide: Text.ElideRight
@@ -234,7 +234,7 @@ Item {
                     : row.connected ? "Connected"
                     : row.bonded ? "Paired"
                     : "Click to pair"
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "Inter"; font.pixelSize: 10
                 elide: Text.ElideRight
             }
@@ -251,7 +251,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: row.hasBattery
                 text: row.device ? `${Math.round(row.device.battery * 100)}%` : ""
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "Inter"; font.pixelSize: 11
                 font.features: ({ "tnum": 1 })
             }

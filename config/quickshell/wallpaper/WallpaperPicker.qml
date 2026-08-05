@@ -112,7 +112,7 @@ PanelWindow {
                                 id: tabLabel
                                 anchors.centerIn: parent
                                 text: tabChip.modelData.label
-                                color: tabChip.selected ? Theme.primary : Theme.onSurfaceVariant
+                                color: tabChip.selected ? Theme.primary : Theme.textOnSurfaceVariant
                                 font.family: "Inter"; font.pixelSize: 12
                                 font.weight: tabChip.selected ? Font.DemiBold : Font.Normal
                             }
@@ -137,7 +137,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: Wall.busy
                     text: "applying…"
-                    color: Theme.onSurfaceVariant
+                    color: Theme.textOnSurfaceVariant
                     font.family: "Inter"; font.pixelSize: 10
                 }
 
@@ -217,7 +217,7 @@ PanelWindow {
                                     radius: 8
                                     color: "transparent"
                                     border.width: tile.isCurrent ? 2 : (tileMa.containsMouse ? 1 : 0)
-                                    border.color: tile.isCurrent ? Theme.primary : Theme.onSurfaceVariant
+                                    border.color: tile.isCurrent ? Theme.primary : Theme.textOnSurfaceVariant
                                 }
 
                                 Text {
@@ -227,7 +227,7 @@ PanelWindow {
                                     anchors.margins: 5
                                     visible: tileMa.containsMouse
                                     text: Wall.basename(tile.modelData)
-                                    color: Theme.onSurface
+                                    color: Theme.textOnSurface
                                     style: Text.Outline
                                     styleColor: Theme.surface
                                     font.family: "Inter"; font.pixelSize: 10
@@ -251,7 +251,7 @@ PanelWindow {
                         y: 30
                         horizontalAlignment: Text.AlignHCenter
                         text: `No images in ${Config.wallpaper.dir}`
-                        color: Theme.onSurfaceVariant
+                        color: Theme.textOnSurfaceVariant
                         font.family: "Inter"; font.pixelSize: 12
                     }
 
@@ -336,7 +336,7 @@ PanelWindow {
             anchors.leftMargin: 18
             anchors.verticalCenter: parent.verticalCenter
             text: section.title
-            color: Theme.onSurfaceVariant
+            color: Theme.textOnSurfaceVariant
             font.family: "JetBrainsMono Nerd Font"
             font.pixelSize: 10
             font.capitalization: Font.AllUppercase
@@ -410,7 +410,7 @@ PanelWindow {
             Text {
                 width: parent.width
                 text: choice.label
-                color: Theme.onSurface
+                color: Theme.textOnSurface
                 font.family: "Inter"; font.pixelSize: 12
                 font.weight: choice.selected ? Font.DemiBold : Font.Normal
                 elide: Text.ElideRight
@@ -420,7 +420,7 @@ PanelWindow {
                 width: parent.width
                 visible: text !== ""
                 text: choice.detail
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "Inter"; font.pixelSize: 10
                 elide: Text.ElideRight
             }
@@ -455,7 +455,7 @@ PanelWindow {
             id: segLabel
             anchors.centerIn: parent
             text: seg.text
-            color: seg.selected ? Theme.primary : Theme.onSurfaceVariant
+            color: seg.selected ? Theme.primary : Theme.textOnSurfaceVariant
             font.family: "Inter"; font.pixelSize: 11
             font.weight: seg.selected ? Font.DemiBold : Font.Normal
         }

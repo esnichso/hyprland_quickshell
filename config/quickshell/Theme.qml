@@ -6,8 +6,22 @@
 // in the shell; everything else binds to a role.
 //
 // Roles, not palette names. Components ask for Theme.primary or
-// Theme.onSurfaceVariant, never for "mauve" — that is what makes both theming
-// modes render through one code path.
+// Theme.textOnSurfaceVariant, never for "mauve" — that is what makes both
+// theming modes render through one code path.
+//
+// WHY `textOnSurface` AND NOT Material's own `onSurface`. QML reserves names of
+// the form `on` + Capital for signal handlers. Declaring `onSurface` next to
+// `surface` on the same object costs the property its BINDING — it keeps its
+// default value, and the default for a color is BLACK. Nothing warns.
+//
+// That shipped. Every piece of text asking for Theme.onSurface drew black on a
+// dark island: the clock, the launcher input, every result row. Theme
+// .onSurfaceVariant beside it was fine, because no `surfaceVariant` role is
+// declared here — and that asymmetry is what identified the cause, after two
+// screenshots under completely different palettes showed the same black clock
+// and ruled the palette out.
+//
+// `check.sh`'s qml lint now fails on any `onX` declared alongside `X`.
 
 pragma Singleton
 
@@ -26,13 +40,13 @@ Singleton {
     readonly property color surfaceContainerHigh: read("surface_container_high", "#45475a")
 
     // --- content ---
-    readonly property color onSurface: read("on_surface", "#cdd6f4")
-    readonly property color onSurfaceVariant: read("on_surface_variant", "#a6adc8")
+    readonly property color textOnSurface: read("on_surface", "#cdd6f4")
+    readonly property color textOnSurfaceVariant: read("on_surface_variant", "#a6adc8")
     readonly property color outline: read("outline", "#6c7086")
 
     // --- accents ---
     readonly property color primary: read("primary", "#cba6f7")
-    readonly property color onPrimary: read("on_primary", "#1e1e2e")
+    readonly property color textOnPrimary: read("on_primary", "#1e1e2e")
     readonly property color secondary: read("secondary", "#f5c2e7")
     readonly property color tertiary: read("tertiary", "#94e2d5")
     readonly property color error: read("error", "#f38ba8")

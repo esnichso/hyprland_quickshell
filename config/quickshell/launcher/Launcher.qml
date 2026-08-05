@@ -416,11 +416,11 @@ PanelWindow {
                 anchors.rightMargin: 14
                 anchors.verticalCenter: parent.verticalCenter
 
-                color: Theme.onSurface
+                color: Theme.textOnSurface
                 font.family: "Inter"
                 font.pixelSize: 16
                 selectionColor: Qt.alpha(Theme.primary, 0.4)
-                selectedTextColor: Theme.onSurface
+                selectedTextColor: Theme.textOnSurface
                 clip: true
                 selectByMouse: true
 
@@ -471,7 +471,7 @@ PanelWindow {
                     verticalAlignment: Text.AlignVCenter
                     visible: input.text === ""
                     text: "Search — > run  = calc  : emoji  ; clipboard  / windows"
-                    color: Qt.alpha(Theme.onSurfaceVariant, 0.55)
+                    color: Qt.alpha(Theme.textOnSurfaceVariant, 0.55)
                     font.family: "Inter"
                     font.pixelSize: 13
                     elide: Text.ElideRight
@@ -484,7 +484,7 @@ PanelWindow {
                 anchors.rightMargin: 18
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.modeLabels[root.mode]
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
                 font.family: "JetBrainsMono Nerd Font"
                 font.pixelSize: 10
                 font.capitalization: Font.AllUppercase

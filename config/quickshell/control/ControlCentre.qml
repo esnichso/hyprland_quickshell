@@ -137,7 +137,7 @@ PanelWindow {
                                 id: tabLabel
                                 anchors.centerIn: parent
                                 text: parent.modelData.label
-                                color: parent.selected ? Theme.primary : Theme.onSurfaceVariant
+                                color: parent.selected ? Theme.primary : Theme.textOnSurfaceVariant
                                 font.family: "Inter"
                                 font.pixelSize: 12
                                 font.weight: parent.selected ? Font.DemiBold : Font.Normal

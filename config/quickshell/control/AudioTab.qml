@@ -48,7 +48,7 @@ Item {
             width: parent.width
             visible: Audio.sinks.length === 0
             text: "No output devices"
-            color: Qt.alpha(Theme.onSurfaceVariant, 0.7)
+            color: Qt.alpha(Theme.textOnSurfaceVariant, 0.7)
             font.family: "Inter"; font.pixelSize: 11
             horizontalAlignment: Text.AlignHCenter
         }
@@ -70,7 +70,7 @@ Item {
             width: parent.width
             visible: Audio.sources.length === 0
             text: "No input devices"
-            color: Qt.alpha(Theme.onSurfaceVariant, 0.7)
+            color: Qt.alpha(Theme.textOnSurfaceVariant, 0.7)
             font.family: "Inter"; font.pixelSize: 11
             horizontalAlignment: Text.AlignHCenter
         }
@@ -103,7 +103,7 @@ Item {
             anchors.left: parent.left
             anchors.leftMargin: 18
             anchors.verticalCenter: parent.verticalCenter
-            color: Theme.onSurfaceVariant
+            color: Theme.textOnSurfaceVariant
             font.family: "JetBrainsMono Nerd Font"
             font.pixelSize: 10
             font.capitalization: Font.AllUppercase
@@ -180,7 +180,7 @@ Item {
             anchors.rightMargin: 8
             y: 5
             text: Audio.label(row.node)
-            color: Theme.onSurface
+            color: Theme.textOnSurface
             font.family: "Inter"; font.pixelSize: 12
             font.weight: row.isDefault ? Font.DemiBold : Font.Normal
             elide: Text.ElideRight
@@ -192,7 +192,7 @@ Item {
             anchors.rightMargin: 18
             y: 5
             text: `${Math.round(row.volume * 100)}%`
-            color: row.muted ? Theme.error : Theme.onSurfaceVariant
+            color: row.muted ? Theme.error : Theme.textOnSurfaceVariant
             font.family: "Inter"; font.pixelSize: 11
             font.features: ({ "tnum": 1 })
         }
@@ -203,7 +203,7 @@ Item {
             anchors.leftMargin: 18
             y: 26
             text: row.muted ? Icons.volumeOff : Icons.volume
-            color: row.muted ? Theme.error : Theme.onSurfaceVariant
+            color: row.muted ? Theme.error : Theme.textOnSurfaceVariant
             font.pixelSize: 12
 
             MouseArea {

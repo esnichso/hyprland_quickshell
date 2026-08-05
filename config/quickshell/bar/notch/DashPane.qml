@@ -114,7 +114,7 @@ Item {
                         Text {
                             width: parent.width
                             text: Media.title || "Nothing playing"
-                            color: Theme.onSurface
+                            color: Theme.textOnSurface
                             font.family: "Inter"; font.pixelSize: 14
                             font.weight: Font.DemiBold
                             elide: Text.ElideRight
@@ -123,7 +123,7 @@ Item {
                         Text {
                             width: parent.width
                             text: Media.artist
-                            color: Theme.onSurfaceVariant
+                            color: Theme.textOnSurfaceVariant
                             font.family: "Inter"; font.pixelSize: 12
                             elide: Text.ElideRight
                         }
@@ -143,14 +143,14 @@ Item {
                             visible: Media.length > 0
                             Text {
                                 text: Media.fmt(Media.position)
-                                color: Theme.onSurfaceVariant
+                                color: Theme.textOnSurfaceVariant
                                 font.family: "Inter"; font.pixelSize: 10
                                 font.features: ({ "tnum": 1 })
                             }
                             Item { width: parent.width - 80; height: 1 }
                             Text {
                                 text: Media.fmt(Media.length)
-                                color: Theme.onSurfaceVariant
+                                color: Theme.textOnSurfaceVariant
                                 font.family: "Inter"; font.pixelSize: 10
                                 font.features: ({ "tnum": 1 })
                             }
@@ -249,7 +249,7 @@ Item {
 
                         Text {
                             text: Config.dnd ? "DND on" : "DND off"
-                            color: Config.dnd ? Theme.primary : Theme.onSurfaceVariant
+                            color: Config.dnd ? Theme.primary : Theme.textOnSurfaceVariant
                             font.family: "JetBrainsMono Nerd Font"
                             font.pixelSize: 10
                             MouseArea {
@@ -278,7 +278,7 @@ Item {
                     width: parent.width
                     visible: Notifs.count === 0
                     text: "Nothing here"
-                    color: Qt.alpha(Theme.onSurfaceVariant, 0.6)
+                    color: Qt.alpha(Theme.textOnSurfaceVariant, 0.6)
                     font.family: "Inter"; font.pixelSize: 12
                     horizontalAlignment: Text.AlignHCenter
                     topPadding: 10; bottomPadding: 10
@@ -302,7 +302,7 @@ Item {
             id: label
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            color: Theme.onSurfaceVariant
+            color: Theme.textOnSurfaceVariant
             font.family: "JetBrainsMono Nerd Font"
             font.pixelSize: 10
             font.capitalization: Font.AllUppercase
@@ -318,19 +318,39 @@ Item {
     // POINTER: bound to Media.position it would snap back on every frame until
     // the player caught up, which reads as the drag being ignored.
     component SeekBar: Item {
+        id: seek
         property real fraction: 0        // where the player is, 0-1
         property bool seekable: false
         signal seekRequested(real fraction)
 
         implicitHeight: 14
-        readonly property real shown: seekMa.pressed ? seekMa.frac : fraction
+
+        // Where the bar DRAWS, which is not always where the player is.
+        //
+        //   dragging  the pointer, or the bar snaps back every frame until the
+        //             player catches up and the drag reads as ignored
+        //   released  the value we asked for, until the player agrees or a
+        //             second has passed — MPRIS seeks are not instant, and one
+        //             frame of the old position looks like the seek failed
+        //   otherwise the player
+        property real held: -1
+        readonly property real shown:
+            seekMa.pressed ? seekMa.frac : (held >= 0 ? held : fraction)
+
+        onFractionChanged: if (held >= 0 && Math.abs(fraction - held) < 0.01) held = -1
+
+        Timer {
+            id: holdTimer
+            interval: 1000
+            onTriggered: seek.held = -1
+        }
 
         LevelBar {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             height: 3
-            value: parent.shown
+            value: seek.shown
             // Position updates continuously; animating it fights the real
             // value and lags behind the audio.
             animate: false
@@ -339,20 +359,20 @@ Item {
         // Shown only while the pointer is on the bar. A permanent handle on a
         // 3px line is visual noise for something you touch once a track.
         Rectangle {
-            visible: parent.seekable && (seekMa.containsMouse || seekMa.pressed)
+            visible: seek.seekable && (seekMa.containsMouse || seekMa.pressed)
             width: 9
             height: 9
             radius: 4.5
             color: Theme.primary
             anchors.verticalCenter: parent.verticalCenter
-            x: parent.shown * (parent.width - width)
+            x: seek.shown * (seek.width - width)
         }
 
         MouseArea {
             id: seekMa
             anchors.fill: parent
             hoverEnabled: true
-            enabled: parent.seekable
+            enabled: seek.seekable
             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
 
             property real frac: 0
@@ -366,7 +386,9 @@ Item {
             onPositionChanged: mouse => { if (pressed) at(mouse.x); }
             onReleased: mouse => {
                 at(mouse.x);
-                parent.seekRequested(frac);
+                seek.held = frac;
+                holdTimer.restart();
+                seek.seekRequested(frac);
             }
         }
     }
@@ -383,7 +405,7 @@ Item {
         Glyph {
             anchors.centerIn: parent
             text: parent.glyph
-            color: Theme.onSurface
+            color: Theme.textOnSurface
             font.pixelSize: 13
         }
 
@@ -456,7 +478,7 @@ Item {
                     width: parent.width
                     Text {
                         text: modelData.appName
-                        color: Theme.onSurfaceVariant
+                        color: Theme.textOnSurfaceVariant
                         font.family: "Inter"; font.pixelSize: 11
                     }
                     Item { width: parent.width - 120; height: 1 }
@@ -465,7 +487,7 @@ Item {
                 Text {
                     width: parent.width
                     text: modelData.summary
-                    color: Theme.onSurface
+                    color: Theme.textOnSurface
                     font.family: "Inter"; font.pixelSize: 12
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
@@ -475,7 +497,7 @@ Item {
                     width: parent.width
                     visible: text !== ""
                     text: modelData.body
-                    color: Theme.onSurfaceVariant
+                    color: Theme.textOnSurfaceVariant
                     font.family: "Inter"; font.pixelSize: 12
                     elide: Text.ElideRight
                     maximumLineCount: 2

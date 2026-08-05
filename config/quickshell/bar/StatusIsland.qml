@@ -129,7 +129,7 @@ IslandSurface {
                 anchors.centerIn: parent
                 visible: Net.mode === "wifi"
                 level: Net.bars(Net.active)
-                color: Theme.onSurfaceVariant
+                color: Theme.textOnSurfaceVariant
             }
 
             Glyph {
@@ -141,7 +141,7 @@ IslandSurface {
                     : Icons.wifiOff
                 // Down is the only one worth colouring: off is a choice you
                 // made, down is something that broke.
-                color: Net.mode === "down" ? Theme.error : Theme.onSurfaceVariant
+                color: Net.mode === "down" ? Theme.error : Theme.textOnSurfaceVariant
             }
 
             MouseArea {
@@ -159,7 +159,7 @@ IslandSurface {
             // absent adapter (a VM) hides it too.
             visible: Config.modules.bluetooth && Bt.enabled
             text: Icons.bluetooth
-            color: Bt.anyConnected ? Theme.primary : Theme.onSurfaceVariant
+            color: Bt.anyConnected ? Theme.primary : Theme.textOnSurfaceVariant
 
             MouseArea {
                 anchors.fill: parent
@@ -197,7 +197,7 @@ IslandSurface {
                 color: root.batteryCritical ? Theme.error
                      : root.batteryLow ? Theme.error
                      : root.charging ? Theme.primary
-                     : Theme.onSurfaceVariant
+                     : Theme.textOnSurfaceVariant
 
                 SequentialAnimation on opacity {
                     running: root.batteryCritical && Config.motion.enabled
@@ -212,7 +212,7 @@ IslandSurface {
                 text: `${root.batteryPct}%`
                 color: root.batteryLow ? Theme.error
                      : root.charging ? Theme.primary
-                     : Theme.onSurface
+                     : Theme.textOnSurface
                 font.family: "Inter"
                 font.pixelSize: 13
                 font.weight: Font.Medium

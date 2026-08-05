@@ -51,7 +51,7 @@ has just opened.
 | State | Appearance |
 | --- | --- |
 | Focused | Filled `primary` pill, widened to 22px |
-| Has windows | Filled dot, `onSurfaceVariant` |
+| Has windows | Filled dot, `textOnSurfaceVariant` |
 | Empty but shown | Hollow ring, `outline` |
 | Urgent | `error`, pulsing 1.2s |
 
@@ -77,7 +77,7 @@ State machine, priority order high to low:
 
 #### 1.2.1 Clock (rest)
 
-`14:32   Mon 3` — time in `tnum` figures, date in `onSurfaceVariant` at 11px.
+`14:32   Mon 3` — time in `tnum` figures, date in `textOnSurfaceVariant` at 11px.
 Format from `settings.json` (`de_DE` gives you 24h and `Mo 3. Aug`).
 Updates on the minute, not on a 1s timer — `SystemClock { precision: SystemClock.Minutes }`.
 

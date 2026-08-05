@@ -247,24 +247,28 @@ _Populated during Phases 3 and 4. Issue, cause, whether it needs a decision._
 | ✅ | Notifications showed a generic bell | The toast read only `Notification.image`, which few apps set. `Notifs.iconFor()` now falls back to `appIcon` through the icon theme, then `desktopEntry`. | no |
 | ✅ | No way to skip within a track | Only prev/play/next existed. Added a draggable progress bar, ±10s buttons, and `Shift`+media keys. | no |
 | ✅ | Login screen was stock SDDM | Never built. `sddm/hypersetup/` + `install.sh --sddm`, FEATURES §9.1. | preview it |
-| ❓ | **Black text in the island and launcher** | Not diagnosed. Every text item binds `Theme.onSurface`, so the palette itself is wrong — the `colour` check now names which of the three possible causes it is. | **yes, see below** |
+| ✅ | **Black text in the island and launcher** | `Theme` declared `onSurface` next to `surface`. QML reserves `on`+Capital for signal handlers, so the property lost its binding and kept the default — black. Renamed to `textOnSurface`; lint added. | no |
+| ✅ | Seek jumped to the end of the track | The player reports its length as the seek target until the next metadata refresh. `Media.length` now latches the longest value seen for the track. | no |
+| ✅ | `check.sh` called a healthy shell dead | `pgrep -x quickshell` — the binary is `qs`; and `qs list` lists instances, not configs. Both greps were written against output nobody had read. | no |
 
-### The black text
+### The black text, and how it was found
 
-Every `Text` in the shell binds `Theme.onSurface` or `Theme.onSurfaceVariant`
-and none is missing a colour, so this is the generated palette, not the QML.
-Three things produce it and they need different fixes, so `check.sh`'s `colour`
-section was extended to tell them apart:
+Worth writing down, because two rounds were spent on the wrong layer.
 
-- **the palette is light while `theme.scheme` says dark** — every contrast pair
-  still passes, because contrast is direction-blind. Fix: `theme.scheme`.
-- **a role never got substituted**, so `colors.json` holds
-  `"{{colors.on_surface.default.hex}}"` — valid JSON, and QML draws an invalid
-  colour string as black without warning. Fix: the template or matugen's role
-  names.
-- **the palette is dark but too flat once the island's 0.72 alpha lets the
-  wallpaper through**. Fix: `theme.contrast`, per DESIGN §4.
+The palette was fine — `check.sh` reported a dark palette with
+`on_surface #e1e2ec` — and every `Text` in the shell binds `Theme.onSurface`,
+so there was nothing left to blame. The thing that broke it open was measuring
+the screenshot instead of reading the code: the clock pill is `#4e4f54` and the
+time's glyph pixels bottom out at `#0c0d11`, while the date beside it, in the
+same `Row`, renders light. Same file, same font, adjacent lines — the only
+difference is `onSurface` versus `onSurfaceVariant`.
 
-Run `./install/check.sh` and send the `colour` section. It prints the resolved
-`surface` / `on_surface` / `on_surface_variant` / `primary` values, which is
-enough to settle it without another guess.
+That asymmetry is the whole answer. `Theme` declares `surface`, so
+`onSurface` reads as a signal handler and the binding is dropped; there is no
+`surfaceVariant` role, so `onSurfaceVariant` is an ordinary property and works.
+`onPrimary` had the same collision with `primary` and was equally dead — it is
+used only by `Toggle`, which is why nobody had seen it.
+
+An older screenshot from a completely different palette showed the identical
+black clock. That is what ruled out the theme before anything was changed.
+
