@@ -262,6 +262,8 @@ _Populated during Phases 3 and 4. Issue, cause, whether it needs a decision._
 | ✅ | Clipboard images were `[[ binary data … ]]` | Now a thumbnail plus `png · 800×600 · 41 KiB`. Decoded to `Quickshell.cachePath("clip")` on demand, one process at a time from a queue, cached by id. Search reads the label and the raw marker. | no |
 | ✅ | Wallpaper picker was mouse-only | Arrows/Enter/Tab/Home/End, over a flat key list rather than per-item focus — the two tabs have no common structure. Scroll-into-view on the grid. | no |
 | ✅ | No scratchpad gesture | 4-finger up toggles the special workspace already on `SUPER+S`. Three-finger vertical stays unbound so a diagonal swipe cannot be a coin flip. | no |
+| ✅ | Wallpaper re-themed only sometimes | `Process.exec()` is documented to STOP a running process, so picking a second wallpaper SIGTERM'd `install.sh` mid-run — leaving a half-written palette, or letting the abandoned run's matugen finish last and put the old colours under the new picture. Requests now coalesce behind the running one. | no |
+| ⬜ | `--theme` from a terminal can still race the picker | The shell serialises its own runs, but `hs-theme` in a terminal and the picker are two writers to the same eight targets. A `flock` in `do_theme` would close it. Not hit yet, and not worth guessing at before it is. | no |
 | ⬜ | KDE-framework apps are unthemed | `KColorScheme` reads `~/.config/kdeglobals` and bypasses qt6ct entirely. No matugen target for it; `check.sh` reports it as a skip. Nothing installed today needs it. | if you install a KDE app |
 
 ### The black text, and how it was found

@@ -78,9 +78,40 @@ Singleton {
         runInstaller(["--theme"]);
     }
 
+    // ONE INSTALLER RUN AT A TIME, with the newest request queued behind it.
+    //
+    // `Process.exec()` is documented to STOP ANY CURRENTLY RUNNING PROCESS —
+    // it is equivalent to `running = false; command = …; running = true`. So
+    // picking a second wallpaper while the first was still rendering sent
+    // SIGTERM to install.sh mid-run. That produced "the theme changes, but
+    // only sometimes", and by two separate routes:
+    //
+    //   - the killed run could be part way through writing colors.json or one
+    //     of the eight templates, and
+    //   - SIGTERM to the shell script does not necessarily reach matugen, so a
+    //     matugen from the ABANDONED run could finish after the new one and
+    //     leave the old palette sitting under the new wallpaper.
+    //
+    // A run takes seconds — matugen, eight templates, a push to every live
+    // kitty — and the picker is a grid of thumbnails, so clicking again before
+    // it lands is the normal way to use it, not an edge case.
+    //
+    // Requests COALESCE rather than queue up: only the newest matters, because
+    // each one overwrites everything the ones before it wrote. Clicking A, B, C
+    // quickly runs A then C, and never leaves the desktop showing B.
+    property var pendingArgs: null
+
+    function runInstaller(args) {
+        if (installProc.running) {
+            root.pendingArgs = args;
+            return;
+        }
+        startInstaller(args);
+    }
+
     // `sh -c '<script>' name "$@"` — the arguments are positional, never
     // interpolated into the script text.
-    function runInstaller(args) {
+    function startInstaller(args) {
         const argv = ["sh", "-c",
             'repo=$(dirname "$(dirname "$(readlink -f "$HOME/.config/quickshell")")"); ' +
             '[ -x "$repo/install/install.sh" ] || { echo "no installer at $repo" >&2; exit 1; }; ' +
@@ -180,9 +211,20 @@ Singleton {
         id: installProc
         stderr: StdioCollector { id: installErr }
         onExited: (code, status) => {
-            root.busy = false;
             if (code !== 0)
                 console.warn("Wall: install.sh failed:", installErr.text.trim());
+
+            // Start the queued request before clearing `busy`, so the spinner
+            // stays up across the whole chain instead of blinking off between
+            // two runs that read to the user as one action.
+            if (root.pendingArgs !== null) {
+                const next = root.pendingArgs;
+                root.pendingArgs = null;
+                root.startInstaller(next);
+                return;
+            }
+
+            root.busy = false;
             // Theme.qml watches colors.json, so a successful run repaints the
             // shell with no further help from here.
         }
