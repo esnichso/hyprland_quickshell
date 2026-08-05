@@ -11,7 +11,12 @@
 #   ./install/install.sh --theme      regenerate the palette
 #   ./install/install.sh --theme <name|/path/to/wallpaper.jpg>
 #   ./install/install.sh --wallpaper <path>   set it WITHOUT retheming
+#   ./install/install.sh --sddm       install the login screen (needs sudo)
 #   ./install/install.sh --yes        never prompt (answers yes, not no)
+#
+# --sddm is separate from --theme because SDDM's theme lives in /usr/share and
+# needs a password to update; --theme has to stay runnable from the picker,
+# which has no terminal to type one into. Re-run --sddm after a theme change.
 
 set -euo pipefail
 
@@ -301,6 +306,16 @@ do_theme() {
 
     # Hyprland re-reads conf/colors.lua on reload; border gradients update live.
     command -v hyprctl >/dev/null && hyprctl reload >/dev/null 2>&1 && ok "hyprctl reload"
+
+    # The login screen is the one target this cannot update: /usr/share is
+    # root-owned and this function has to stay runnable from the picker, which
+    # has no terminal for a sudo prompt. Say so rather than letting the greeter
+    # silently keep last month's colours.
+    if [[ -f "$SDDM_THEME_DIR/theme.conf" ]] \
+       && ! diff -q <(grep -v '^background=' "$SDDM_THEME_DIR/theme.conf" 2>/dev/null) \
+                    "$STATE_HOME/quickshell/sddm-theme.conf" >/dev/null 2>&1; then
+        warn "login screen still has the old palette — ./install/install.sh --sddm"
+    fi
 }
 
 # Merge a theme's [roles] table over the palette matugen just generated, then
@@ -311,7 +326,7 @@ do_theme() {
 # seed, which gives a coherent palette but not literally Catppuccin — its base
 # is a purple-tinted near-black, not #1e1e2e. matugen has no hook to override a
 # role before it renders, so the only place to intervene is after. It renders
-# once, we merge, and if anything changed we re-render the six non-JSON targets
+# once, we merge, and if anything changed we re-render the seven non-JSON targets
 # ourselves.
 #
 # THIS IS STILL ONE CODE PATH. The templates are the same files matugen uses,
@@ -409,13 +424,105 @@ PYEOF
     esac
 }
 
+# ---------------------------------------------------------------- login screen
+
+SDDM_THEME_DIR="/usr/share/sddm/themes/hypersetup"
+
+# Install (or refresh) the SDDM theme.
+#
+# WHY THIS IS A SEPARATE FLAG rather than part of --theme. SDDM runs as the
+# `sddm` user on its own VT before any user session exists: it never reads
+# $HOME, `hyprctl reload` means nothing to it, and its theme directory is
+# root-owned. So the theme has to be COPIED, and copying needs a password —
+# which --theme cannot ask for, because the wallpaper picker runs it with no
+# terminal attached. Rolling this into --theme would make every theme change
+# from the picker hang on an invisible sudo prompt.
+#
+# It generates no colour. matugen has already rendered the palette to
+# ~/.local/state; this moves that file, the QML and the wallpaper into place.
+do_sddm() {
+    step "login screen"
+
+    local gen="$STATE_HOME/quickshell/sddm-theme.conf"
+    [[ -f "$gen" ]] || die "no generated palette at $gen — run ./install/install.sh --theme first"
+    [[ -f "$REPO/sddm/hypersetup/Main.qml" ]] || die "no theme in the repo at sddm/hypersetup"
+
+    sudo install -d -m 755 "$SDDM_THEME_DIR"
+    sudo install -m 644 "$REPO/sddm/hypersetup/Main.qml"         "$SDDM_THEME_DIR/"
+    sudo install -m 644 "$REPO/sddm/hypersetup/metadata.desktop" "$SDDM_THEME_DIR/"
+    sudo install -m 644 "$gen" "$SDDM_THEME_DIR/theme.conf"
+    ok "theme + palette in $SDDM_THEME_DIR"
+
+    # The wallpaper, if one has been chosen. The extension is preserved rather
+    # than forced to .jpg: QML's image loader picks its decoder by extension
+    # first, and a PNG named .jpg is a blank background with no error.
+    local wall ext
+    wall="$(cat "$STATE_HOME/quickshell/wallpaper" 2>/dev/null || true)"
+    if [[ -n "$wall" && -f "$wall" ]]; then
+        ext="${wall##*.}"
+        # Drop any earlier one first, or a format change leaves two files and
+        # theme.conf pointing at the stale one.
+        sudo rm -f "$SDDM_THEME_DIR"/background.*
+        sudo install -m 644 "$wall" "$SDDM_THEME_DIR/background.$ext"
+        # [General] is the only section in the template, so appending stays
+        # inside it. Main.qml treats a missing key as "no wallpaper".
+        printf 'background=background.%s\n' "$ext" \
+            | sudo tee -a "$SDDM_THEME_DIR/theme.conf" >/dev/null
+        ok "background.$ext ($(basename "$wall"))"
+    else
+        warn "no wallpaper set — the login screen will use the flat background colour"
+    fi
+
+    # Root-owned, in /etc: a symlink into ~ would be invisible to the sddm user.
+    sudo install -d -m 755 /etc/sddm.conf.d
+    printf '[Theme]\nCurrent=hypersetup\n' \
+        | sudo tee /etc/sddm.conf.d/10-hypersetup.conf >/dev/null
+    ok "/etc/sddm.conf.d/10-hypersetup.conf"
+
+    # A greeter that fails to draw locks you out of your own machine, so the
+    # way back is printed here rather than left in a comment you cannot reach.
+    printf '\n%s  preview it before you trust it:%s\n' "$c_dim" "$c_off"
+    printf '    sddm-greeter-qt6 --test-mode --theme %s\n' "$SDDM_THEME_DIR"
+    printf '\n%s  if the login screen is ever blank: Ctrl+Alt+F2, log in, then%s\n' "$c_dim" "$c_off"
+    printf '    sudo rm /etc/sddm.conf.d/10-hypersetup.conf && sudo systemctl restart sddm\n'
+}
+
+# Set the wallpaper on the running session AND make it survive a logout.
+#
+# hyprpaper remembers NOTHING. `hyprctl hyprpaper wallpaper` lasts exactly as
+# long as the process, and autostart starts a fresh one with no config, so the
+# desktop came back bare after every login. The config file is the only thing
+# hyprpaper reads at startup, so the choice is written there as well as pushed
+# over IPC — the file is what logs in, the IPC call is what you see now.
+#
+# It is generated, so it is gitignored alongside the matugen output: ~/.config
+# is a symlink into the checkout and a runtime write would otherwise leave the
+# tree permanently dirty.
 set_wallpaper() {
+    local img="$1" fit
+    fit="$(json_get "$CONFIG_HOME/quickshell/settings.json" wallpaper fit || echo cover)"
+
+    # hyprpaper is hyprlang, not Lua — `wallpaper` is a nested block here, and
+    # fit_mode is one of contain|cover|tile|fill. An empty monitor is the
+    # fallback for every output, which is what a single-display machine wants.
+    mkdir -p "$CONFIG_HOME/hypr"
+    cat > "$CONFIG_HOME/hypr/hyprpaper.conf" <<EOF
+# Generated by install.sh. Change wallpaper.fit in settings.json, not this.
+splash = false
+ipc = true
+
+wallpaper {
+    monitor =
+    path = $img
+    fit_mode = $fit
+}
+EOF
+    ok "hyprpaper.conf -> $(basename "$img")"
+
+    # Live update on top of that, when there is a session to update.
     command -v hyprctl >/dev/null || return 0
     pgrep -x hyprpaper >/dev/null || return 0
-    local fit
-    fit="$(json_get "$CONFIG_HOME/quickshell/settings.json" wallpaper fit || echo cover)"
-    # Empty monitor = fallback for every output.
-    hyprctl hyprpaper wallpaper ",$1,$fit" >/dev/null 2>&1 || true
+    hyprctl hyprpaper wallpaper ",$img,$fit" >/dev/null 2>&1 || true
 }
 
 # Set the wallpaper and remember it, WITHOUT touching the palette.
@@ -452,7 +559,7 @@ except Exception:
 # ---------------------------------------------------------------- main
 
 main() {
-    local do_all=1 pkgs=0 link=0 svc=0 theme=0 theme_arg="" wall=0 wall_arg=""
+    local do_all=1 pkgs=0 link=0 svc=0 theme=0 theme_arg="" wall=0 wall_arg="" sddm=0
 
     while (( $# )); do
         case "$1" in
@@ -464,8 +571,9 @@ main() {
             --wallpaper) do_all=0
                         [[ ${2:-} && ${2:-} != --* ]] && { wall=1; wall_arg="$2"; shift; } \
                             || die "--wallpaper needs a path" ;;
+            --sddm)     do_all=0; sddm=1 ;;
             --yes|-y)   PACMAN_CONFIRM="--noconfirm" ;;
-            -h|--help)  sed -n '2,13p' "$0"; exit 0 ;;
+            -h|--help)  sed -n '2,19p' "$0"; exit 0 ;;
             *)          die "unknown flag: $1" ;;
         esac
         shift
@@ -477,6 +585,8 @@ main() {
     (( do_all || svc ))   && do_services
     (( wall ))            && do_wallpaper "$wall_arg"
     (( do_all || theme )) && do_theme "$theme_arg"
+    # After --theme, never before: it copies the palette --theme just rendered.
+    (( do_all || sddm ))  && do_sddm
 
     step "done"
     if (( do_all )); then

@@ -37,6 +37,50 @@ Singleton {
     readonly property bool critical:
         popup !== null && popup.urgency === NotificationUrgency.Critical
 
+    // The picture to draw for a notification, as something Image can load, or
+    // "" for none.
+    //
+    // TWO DIFFERENT THINGS arrive under the name "icon", and reading only the
+    // first is why almost every notification showed a generic bell:
+    //
+    //   image        pixel data or a path attached to THIS message — album
+    //                art, a contact photo, a screenshot thumbnail. Set by a
+    //                minority of apps.
+    //   appIcon      the sending app's own icon, from the `app_icon` field.
+    //                Set by nearly everyone, and it is usually a freedesktop
+    //                icon NAME ("firefox"), not a path — so it has to be
+    //                resolved through the icon theme before Image sees it.
+    //   desktopEntry the app's .desktop id, when it bothered to send one. Last
+    //                resort, and by then a name-shaped icon is a fair guess.
+    //
+    // Callers must still key their fallback glyph off Image.status, not off
+    // this returning "" — a name that resolves to a path the theme does not
+    // actually have on disk fails at load time, not here. That is the same
+    // trap the media art hit in DashPane.
+    function iconFor(n) {
+        if (!n)
+            return "";
+        if (n.image && String(n.image) !== "")
+            return String(n.image);
+
+        const name = n.appIcon ? String(n.appIcon) : "";
+        const entry = n.desktopEntry ? String(n.desktopEntry) : "";
+        return resolveIcon(name) || resolveIcon(entry);
+    }
+
+    // A path, a URL, or a theme icon name — apps send all three.
+    function resolveIcon(s) {
+        if (!s || s === "")
+            return "";
+        if (s.indexOf("://") !== -1)
+            return s;
+        if (s.charAt(0) === "/")
+            return "file://" + s;
+        // `true` asks Quickshell to return "" for an icon the theme does not
+        // have, rather than a path that will fail to load.
+        return Quickshell.iconPath(s, true) || "";
+    }
+
     function dismissPopup() {
         if (popup) popup.dismiss();
         popup = null;

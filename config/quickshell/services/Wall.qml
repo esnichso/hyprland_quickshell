@@ -4,7 +4,7 @@
 // This service does not run matugen, does not write colors.json and does not
 // know what a template is; it calls the installer the same way you would from a
 // terminal. A second mechanism here would be a second thing to keep in sync
-// with the seven matugen targets, and it would drift.
+// with the eight matugen targets, and it would drift.
 //
 // The repo path is DERIVED, never hardcoded: ~/.config/quickshell is a symlink
 // into the checkout, so resolving it and going up two levels finds the repo on

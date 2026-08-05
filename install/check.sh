@@ -16,6 +16,7 @@ set -uo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 
 QUIET=0
 [[ "${1:-}" == "--quiet" ]] && QUIET=1
@@ -60,6 +61,22 @@ if command -v hyprctl >/dev/null && hyprctl version >/dev/null 2>&1; then
     fi
 else
     sk "hyprland not running — run this inside the session"
+fi
+
+# The wallpaper survives a logout only because hyprpaper.conf exists — the IPC
+# call the picker makes dies with the process. A conf pointing at a file that
+# has since been deleted or renamed fails the same way as no conf at all, so
+# check the path too, not just the file.
+hp="$CONFIG_HOME/hypr/hyprpaper.conf"
+if [[ -f "$hp" ]]; then
+    hpath="$(grep -oP '^\s*path\s*=\s*\K.*' "$hp" | head -1)"
+    if [[ -n "$hpath" && -f "$hpath" ]]; then
+        ok "wallpaper restores at login: $(basename "$hpath")"
+    else
+        no "hyprpaper.conf points at a missing file (${hpath:-no path line}) — re-pick a wallpaper"
+    fi
+else
+    no "no hyprpaper.conf — the wallpaper will be lost at the next login, run install.sh --wallpaper <path>"
 fi
 
 # ------------------------------------------------------------------- shell
@@ -150,10 +167,20 @@ colors="$CONFIG_HOME/quickshell/colors.json"
 if [[ -f "$colors" ]]; then
     ok "colors.json generated"
 
-    # Contrast. The one real risk of wallpaper-driven colour is a beautiful
-    # wallpaper that produces an unreadable terminal, so this is a hard gate.
-    python3 - "$colors" <<'PY'
-import json, sys
+    # Is the palette a palette at all, is it the polarity it was asked for, and
+    # is the text readable ON THE SURFACES IT IS ACTUALLY DRAWN ON?
+    #
+    # The last one is the gap that let "black text in the island" ship. The old
+    # check compared on_surface against the OPAQUE surface roles, and nothing in
+    # this shell is opaque: the island is surfaceContainer at 0.72 and the panels
+    # are surfaceContainerLow at 0.86, both composited over a blurred wallpaper.
+    # A palette can clear 4.5:1 on paper and still be unreadable once a third of
+    # the wallpaper shows through it.
+    #
+    # The alphas are PARSED OUT OF Theme.qml rather than repeated here, so
+    # changing one in the shell cannot leave this check testing the old number.
+    python3 - "$colors" "$CONFIG_HOME/quickshell/settings.json" "$REPO" <<'PY'
+import json, re, pathlib, sys
 
 def lum(h):
     h = h.lstrip('#')
@@ -166,26 +193,98 @@ def ratio(a, b):
     hi, lo = max(la, lb), min(la, lb)
     return (hi + 0.05) / (lo + 0.05)
 
+def over(fg, alpha, bg):
+    """fg drawn at `alpha` on top of bg -- what the compositor actually shows."""
+    f = [int(fg.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)]
+    b = [int(bg.lstrip('#')[i:i+2], 16) for i in (0, 2, 4)]
+    return "#" + "".join("%02x" % round(alpha * f[i] + (1 - alpha) * b[i]) for i in range(3))
+
 d = json.load(open(sys.argv[1]))["colors"]
-pairs = [
-    ("on_surface", "surface"),
-    ("on_surface_variant", "surface"),
-    ("on_surface", "surface_container"),
-    ("on_primary", "primary"),
-]
-worst, bad = 99, []
-for fg, bg in pairs:
-    if fg not in d or bg not in d:
+bad = []
+
+# 1. Every value a real colour. An unsubstituted "{{colors.x.default.hex}}"
+#    parses as JSON, survives every check that only looks at roles it knows, and
+#    renders in QML as BLACK -- an invalid colour string does not warn.
+HEX = re.compile(r"#[0-9a-fA-F]{6}$")
+for k, v in d.items():
+    if k.startswith("_"):
         continue
-    r = ratio(d[fg], d[bg])
-    worst = min(worst, r)
-    if r < 4.5:
-        bad.append(f"{fg} on {bg} = {r:.1f}:1")
+    if not HEX.match(str(v)):
+        bad.append(f"{k} = {v!r} is not #rrggbb, QML draws that as black")
+if bad:
+    print("\033[31m ✗ \033[0m palette is not usable: " + "; ".join(bad[:4]))
+    sys.exit(1)
+
+# 2. Polarity. A dark scheme whose text is darker than its surface is exactly
+#    the shape of "black text I cannot read", and it passes every contrast gate
+#    below, because contrast is direction-blind.
+want = "dark"
+try:
+    want = json.load(open(sys.argv[2]))["theme"]["scheme"]
+except Exception:
+    pass
+got = "dark" if lum(d["on_surface"]) > lum(d["surface"]) else "light"
+if got != want:
+    print(f"\033[31m ✗ \033[0m settings.json asks for a {want} scheme but the palette is "
+          f"{got}: on_surface {d['on_surface']} on surface {d['surface']}")
+    sys.exit(1)
+
+# 3. Contrast on the opaque roles -- unchanged, still a hard 4.5:1 gate.
+worst = 99
+for fg, bg in (("on_surface", "surface"),
+               ("on_surface_variant", "surface"),
+               ("on_surface", "surface_container"),
+               ("on_primary", "primary")):
+    if fg in d and bg in d:
+        r = ratio(d[fg], d[bg])
+        worst = min(worst, r)
+        if r < 4.5:
+            bad.append(f"{fg} on {bg} = {r:.1f}:1")
+
+# 4. Contrast as COMPOSITED. The wallpaper underneath is unknown and changes
+#    every time you pick one, so both extremes are tried: a black wallpaper and
+#    a white one. The floor is 3:1, WCAG's threshold for large text and UI
+#    components -- not 4.5, because a translucent surface cannot reach 4.5
+#    against both extremes and a check that can never pass is worthless.
+alphas = {}
+theme_qml = (pathlib.Path(sys.argv[3]) / "config/quickshell/Theme.qml").read_text()
+for name, role in (("islandBg", "surfaceContainer"),
+                   ("panelBg", "surfaceContainerLow")):
+    m = re.search(r"property color %s:\s*Qt\.alpha\(%s,\s*([0-9.]+)\)" % (name, role), theme_qml)
+    if m:
+        alphas[name] = (role, float(m.group(1)))
+if not alphas:
+    print("\033[31m ✗ \033[0m could not read the island/panel alphas out of Theme.qml")
+    sys.exit(1)
+
+SNAKE = {"surfaceContainer": "surface_container",
+         "surfaceContainerLow": "surface_container_low"}
+comp = 99
+for name, (role, a) in sorted(alphas.items()):
+    base = d.get(SNAKE[role])
+    if not base:
+        continue
+    for wall in ("#000000", "#ffffff"):
+        eff = over(base, a, wall)
+        for fg in ("on_surface", "on_surface_variant"):
+            r = ratio(d[fg], eff)
+            comp = min(comp, r)
+            if r < 3.0:
+                bad.append(f"{fg} on {name} over a "
+                           f"{'black' if wall == '#000000' else 'white'} "
+                           f"wallpaper = {r:.1f}:1")
 
 if bad:
-    print(f"\033[31m ✗ \033[0m contrast below 4.5:1 — " + "; ".join(bad))
+    # Capped: a palette that is broadly too flat produces one line per pair, and
+    # eleven of them buries the first, which is the one that names the cause.
+    more = f" (+{len(bad) - 3} more)" if len(bad) > 3 else ""
+    print("\033[31m ✗ \033[0m unreadable: " + "; ".join(bad[:3]) + more)
     sys.exit(1)
-print(f"\033[32m ✓ \033[0m contrast floor met (worst {worst:.1f}:1)")
+
+print(f"\033[32m ✓ \033[0m {got} palette, contrast {worst:.1f}:1 opaque / "
+      f"{comp:.1f}:1 composited over any wallpaper")
+print(f"\033[2m       surface {d['surface']}  on_surface {d['on_surface']}  "
+      f"on_surface_variant {d['on_surface_variant']}  primary {d['primary']}\033[0m")
 PY
     if (( $? == 0 )); then pass=$((pass+1)); else fail=$((fail+1)); fi
 else
@@ -195,6 +294,55 @@ fi
 for f in kitty/colors.conf hypr/conf/colors.lua gtk-3.0/colors.css qt6ct/colors/hypersetup.conf; do
     [[ -f "$CONFIG_HOME/$f" ]] && ok "generated: $f" || no "missing: $f — run install.sh --theme"
 done
+
+# ------------------------------------------------------------- login screen
+
+sec "login screen"
+
+# The one target whose files live outside $HOME, so the one that goes stale
+# silently: `--theme` cannot write /usr/share, and nothing about a wrong-coloured
+# greeter looks like an error.
+sddm_dir="/usr/share/sddm/themes/hypersetup"
+sddm_gen="$STATE_HOME/quickshell/sddm-theme.conf"
+
+if [[ -f /etc/sddm.conf.d/10-hypersetup.conf ]] \
+   && grep -q '^Current=hypersetup' /etc/sddm.conf.d/10-hypersetup.conf; then
+    ok "sddm is set to the hypersetup theme"
+else
+    no "sddm is not using this theme — run install.sh --sddm"
+fi
+
+if [[ -f "$sddm_dir/Main.qml" && -f "$sddm_dir/theme.conf" ]]; then
+    ok "theme installed in $sddm_dir"
+
+    # Copied, never symlinked: sddm runs as its own user and cannot follow a
+    # link into $HOME. A link here means the greeter has no theme at all.
+    if [[ -L "$sddm_dir/Main.qml" ]]; then
+        no "Main.qml is a SYMLINK — the sddm user cannot read it, re-run install.sh --sddm"
+    fi
+
+    # Is the greeter's palette the one the desktop is actually using?
+    if [[ -f "$sddm_gen" ]]; then
+        if diff -q <(grep -v '^background=' "$sddm_dir/theme.conf") "$sddm_gen" >/dev/null 2>&1; then
+            ok "greeter palette matches the current theme"
+        else
+            no "greeter palette is stale — run install.sh --sddm"
+        fi
+    fi
+
+    # A background= line pointing at a file that is not there renders a flat
+    # colour, which looks deliberate and is not.
+    bg="$(grep -oP '^background=\K.*' "$sddm_dir/theme.conf" | head -1 || true)"
+    if [[ -z "$bg" ]]; then
+        sk "no wallpaper on the login screen (flat background)"
+    elif [[ -f "$sddm_dir/$bg" ]]; then
+        ok "login wallpaper: $bg"
+    else
+        no "theme.conf points at $bg, which is not in $sddm_dir — re-run install.sh --sddm"
+    fi
+else
+    no "no theme in $sddm_dir — run install.sh --sddm"
+fi
 
 # ------------------------------------------------------------------- binds
 
@@ -266,7 +414,10 @@ sec "qml"
 if python3 - "$REPO" <<'PYEOF'
 import re, sys, pathlib
 repo = pathlib.Path(sys.argv[1])
-qml = sorted((repo / "config/quickshell").rglob("*.qml"))
+# The SDDM theme is QML too, and it is the one file where a load failure
+# costs you the session rather than the bar — so it is linted the same way.
+qml = sorted((repo / "config/quickshell").rglob("*.qml")) \
+    + sorted((repo / "sddm").rglob("*.qml"))
 if not qml:
     print("  no QML found — skipped"); sys.exit(0)
 
@@ -447,9 +598,11 @@ ANY = re.compile(r"\{\{[^}]*\}\}")
 known = set(re.findall(r'"([a-z_0-9]+)": "\{\{colors\.', palette.read_text()))
 bad = []
 
+scanned = 0
 for f in sorted(tdir.iterdir()):
     if not f.is_file():
         continue
+    scanned += 1
     text = f.read_text()
     for m in ANY.finditer(text):
         g = GRAMMAR.fullmatch(m.group(0))
@@ -520,7 +673,7 @@ if bad:
     sys.exit(1)
 
 note = f", {checked} theme contrast pairs (worst {worst:.1f}:1)" if checked else ""
-print(f"  \033[32m ✓ \033[0m {len(known)} roles, {len(themes)} themes{note}")
+print(f"  \033[32m ✓ \033[0m {scanned} templates, {len(known)} roles, {len(themes)} themes{note}")
 PYEOF
 then pass=$((pass+1)); else fail=$((fail+1)); fi
 

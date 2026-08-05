@@ -173,7 +173,12 @@ screen and while held.
 | `XF86MonBrightnessUp` / `Down` | Screen brightness ±5% |
 | `XF86KbdBrightnessUp` / `Down` | Keyboard backlight — off / low / high |
 | `XF86AudioPlay` `Next` `Prev` | Media control via playerctl |
+| `Shift` + `XF86AudioNext` / `Prev` | Seek ±10s **within** the track |
 | `XF86Search` | Launcher |
+
+The laptop has no dedicated seek keys, so seeking shares the track keys with a
+`Shift`: unshifted changes the track, shifted moves inside it. Holding either
+scrubs, because they carry the same `repeating` flag as volume.
 
 Every one of these shows an OSD in the notch (DESIGN §1.2.3) rather than a
 floating popup — that's what makes them feel integrated instead of bolted on.

@@ -9,7 +9,11 @@ hl.on("hyprland.start", function()
   -- a GUI package manager) silently fails instead of prompting.
   hl.exec_cmd("systemctl --user start hyprpolkitagent.service")
 
-  -- Wallpaper daemon. The shell's picker drives it over `hyprctl hyprpaper`.
+  -- Wallpaper daemon. The picker drives it live over `hyprctl hyprpaper`, but
+  -- that lasts only as long as the process — what survives a logout is
+  -- ~/.config/hypr/hyprpaper.conf, which install.sh rewrites on every
+  -- wallpaper change and hyprpaper reads here. Without that file this starts
+  -- bare, which is how the wallpaper used to be lost at every login.
   hl.exec_cmd("hyprpaper")
 
   -- Clipboard: cliphist stores history for the launcher, wl-clip-persist keeps

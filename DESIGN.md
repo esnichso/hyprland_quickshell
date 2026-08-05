@@ -234,7 +234,7 @@ got right and worth keeping.
 **How the merge happens, given matugen renders the templates itself.** matugen
 has no hook to change a role before it writes, so `install.sh --theme` lets it
 render once, merges `[roles]` into `colors.json`, and — only if the theme
-actually has overrides — re-renders the other six targets from the merged map
+actually has overrides — re-renders the other seven targets from the merged map
 itself. It reuses the same template files in the same syntax, so nothing about
 *which role a target takes* is duplicated. A theme without `[roles]` never
 reaches that renderer, so the common path is still matugen's alone.

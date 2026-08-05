@@ -67,6 +67,31 @@ Singleton {
     function seek(sec)  { if (canSeek) player.position = sec; }
     function choose(p)  { chosen = p; }
 
+    // Relative seek. `next`/`previous` change TRACK — this moves within one,
+    // which is the thing a video or a long track actually needs.
+    //
+    // Assigning `position` is an absolute seek, so the arithmetic happens here.
+    // Clamped at both ends: seeking past the end is how some players stop
+    // dead instead of advancing, and a negative position is undefined.
+    function seekBy(delta) {
+        if (!canSeek)
+            return;
+        let target = position + delta;
+        if (target < 0)
+            target = 0;
+        // A stream reports length 0 or -1; there is no end to clamp against.
+        if (length > 0 && target > length - 1)
+            target = length - 1;
+        player.position = target;
+    }
+
+    // 0-1 of the track, for a scrub bar. Guards the streams that report no
+    // length, where a fraction is meaningless rather than zero.
+    function seekToFraction(f) {
+        if (length > 0)
+            seek(Math.max(0, Math.min(1, f)) * length);
+    }
+
     // mm:ss. Guards against the -1 that players report for streams of unknown
     // length, which would otherwise render as "-1:-1".
     function fmt(sec) {

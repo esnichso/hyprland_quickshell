@@ -11,6 +11,10 @@ config/gtk-4.0/colors.css
 config/qt6ct/colors.conf
 config/hypr/hyprlock-colors.conf
 
+# Written by install.sh whenever the wallpaper changes: it is the only thing
+# hyprpaper reads at startup, so it is what restores the wallpaper at login.
+config/hypr/hyprpaper.conf
+
 # Runtime state. Belongs in ~/.local/state/quickshell/, never in the repo —
 # last wallpaper, launcher frecency, notification history, thumbnail cache.
 state.json

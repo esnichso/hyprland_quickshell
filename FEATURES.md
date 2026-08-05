@@ -510,7 +510,7 @@ and `check.sh` can report which mode you're in.
 `install/install.sh --theme <name|path>` — the same command you would type. It
 never runs matugen, never writes `colors.json` and does not know what a
 template is. A second mechanism here would be a second thing to keep in sync
-with the seven matugen targets, and it would drift. `install.sh` gained a
+with the eight matugen targets, and it would drift. `install.sh` gained a
 `--wallpaper <path>` flag for the one case the existing flags could not cover:
 changing the picture in "pick a theme" mode, where re-theming is exactly what
 must not happen.
@@ -572,11 +572,47 @@ wallpaper back inside the shell, which you explicitly didn't want.
 | Lock screen | `hyprlock` | A QML error on the lock surface can trap you in a session. `Quickshell.Services.Pam` exists and this is revisitable in Phase 5, behind a tested TTY escape. |
 | Idle management | `hypridle` | Solved problem, no UI, nothing to gain |
 | Polkit agent | `hyprpolkitagent` | `Quickshell.Services.Polkit` exists; swapping is a Phase 5 nicety, not worth blocking on |
-| Login screen | `sddm` | Runs before `$HOME` is readable. Gets a hand-written QML theme reading a palette written to `/usr/share` at theme-apply time. |
+| Login screen | `sddm` | Runs before `$HOME` is readable. Wears a hand-written QML theme in `sddm/hypersetup/`, installed by `install.sh --sddm` (see below). |
 | Screenshots | `grim` + `slurp` + `satty` | Annotation is a real app's job |
 | Screen recording | `wf-recorder` | Same |
 | Colour picker | `hyprpicker` | Same |
 | File manager | `thunar` | Same |
+
+### 9.1 The login screen
+
+`sddm/hypersetup/` — `Main.qml` plus `metadata.desktop`, the eighth matugen
+target, and the only one that is **copied** rather than symlinked. SDDM runs as
+its own user on its own VT before any user session exists: it cannot read
+`$HOME`, so a symlink into the checkout is a theme it never sees.
+
+| Surface | Behaviour |
+| --- | --- |
+| Background | The current wallpaper, copied in beside the theme, dimmed 55% toward `background` so text stays readable over a picture nobody checked for contrast. Falls back to the flat colour when no wallpaper is set. |
+| Clock | Time and date, same position as the notch's, one `Timer` driving one property |
+| Card | Avatar initial, user name, password field, error line |
+| Session | Bottom-left pill, click to cycle. Names come from a `Repeater` over `sessionModel`, resolved by role **name** — SDDM has reordered its role indices between releases |
+| Keyboard | Bottom-left pill showing the layout, visible only when there is more than one. A greeter silently typing on `us` is the classic "my password stopped working" |
+| Power | Bottom-right: suspend, restart, shut down — each hidden unless `sddm.can*` says it is available |
+
+Deliberately not used: `QtQuick.Controls`. It resolves a style at load, and a
+style that is not installed for the `sddm` user is a greeter that does not
+draw. Everything here is plain `QtQuick`.
+
+The palette arrives through the normal pipeline —
+`config/matugen/templates/sddm-theme.conf` renders to `~/.local/state`, and
+`--sddm` copies that file, the QML and the wallpaper into
+`/usr/share/sddm/themes/hypersetup`. **`--sddm` is separate from `--theme`
+on purpose:** the copy needs a password, and `--theme` has to stay runnable
+from the wallpaper picker, which has no terminal to type one into. `--theme`
+prints a warning when the greeter's palette has gone stale, and `check.sh` has
+a `login screen` section that fails on the same condition.
+
+**If the greeter ever fails to draw you cannot log in.** The way back is a TTY:
+`Ctrl+Alt+F2`, log in, then
+`sudo rm /etc/sddm.conf.d/10-hypersetup.conf && sudo systemctl restart sddm`.
+`--sddm` prints that, because the moment you need it is the moment you cannot
+read this file. Preview before trusting it:
+`sddm-greeter-qt6 --test-mode --theme /usr/share/sddm/themes/hypersetup`.
 
 ---
 

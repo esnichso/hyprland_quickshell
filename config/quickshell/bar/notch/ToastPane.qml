@@ -25,39 +25,50 @@ Item {
         anchors.rightMargin: 16
         spacing: 12
 
-        // Image if the notification carried one (album art, an avatar),
-        // otherwise a tinted glyph. Never an empty square.
+        // Whatever the notification came with — attached art, or the sending
+        // app's own icon — and a tinted glyph when neither loads.
+        //
+        // The glyph is keyed off Image.status, not off the URL being empty. An
+        // icon NAME that resolves to a path the theme does not actually have
+        // fails at LOAD time, so keying off the string left an empty square in
+        // exactly the case this change exists to fix.
         Item {
+            id: mark
             width: 40
             height: 40
             anchors.verticalCenter: parent.verticalCenter
+
+            readonly property bool hasArt: pic.status === Image.Ready
 
             Rectangle {
                 anchors.fill: parent
                 radius: 10
                 color: Qt.alpha(root.critical ? Theme.error : Theme.primary, 0.20)
-                visible: !img.visible
+                visible: !mark.hasArt
             }
 
             Glyph {
                 anchors.centerIn: parent
-                visible: !img.visible
+                visible: !mark.hasArt
                 text: root.critical ? "" : ""   // warning : bell
                 font.pixelSize: 18
                 color: root.critical ? Theme.error : Theme.primary
             }
 
             ClippingRectangle {
-                id: img
                 anchors.fill: parent
                 radius: 10
                 color: "transparent"
-                visible: root.n !== null && root.n.image !== ""
+                visible: mark.hasArt
 
                 Image {
+                    id: pic
                     anchors.fill: parent
-                    source: root.n && root.n.image ? root.n.image : ""
-                    fillMode: Image.PreserveAspectCrop
+                    source: Notifs.iconFor(root.n)
+                    // Fit, not crop: an app icon is square and meant to be seen
+                    // whole, and cropping the one case that used to work to suit
+                    // the one being added is the wrong trade.
+                    fillMode: Image.PreserveAspectFit
                     sourceSize: Qt.size(80, 80)
                     asynchronous: true
                 }

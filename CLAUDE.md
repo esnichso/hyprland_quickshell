@@ -113,6 +113,7 @@ These exist and are executable, but have never been run:
 ./install/install.sh --packages   # one concern at a time
 ./install/install.sh --link
 ./install/install.sh --theme      # regenerate the palette
+./install/install.sh --sddm       # push theme + wallpaper to the login screen
 ./install/check.sh                # validate the RUNNING session, not the files
 ```
 
@@ -219,14 +220,14 @@ and an OSD never grows taller than the bar.
 
 `themes/*.toml` (seed + role overrides) and `matugen image <wallpaper>` both
 produce the same Material 3 role set, which then renders through the same
-templates to all seven targets. When adding a themed target, add a matugen
+templates to all eight targets. When adding a themed target, add a matugen
 template — never a second mechanism. `theme.mode` in `settings.json` selects
 which source feeds it.
 
 The one wrinkle: matugen offers no hook to change a role before it renders, so
 a theme's `[roles]` table can only be merged *after*. `install.sh` lets matugen
 render once, merges the overrides into `colors.json`, and re-renders the other
-six targets itself — reusing the same template files, so no target's role
+seven targets itself — reusing the same template files, so no target's role
 mapping is duplicated. A theme without `[roles]` never reaches that path. Its
 renderer implements exactly two placeholder forms; `check.sh`'s **templates**
 section fails the build if a template ever uses a third. If you add a
@@ -275,6 +276,20 @@ behind them — it is off deliberately.
 entire stylesheet, yielding a completely unstyled surface with no error.
 Validate with GTK's own parser (`load_from_path`, so `@import` resolves), never
 by eye.
+
+**The login screen is the one target `--theme` cannot update.** SDDM's theme
+lives in `/usr/share`, root-owned, and `--theme` has to stay runnable from the
+wallpaper picker — which has no terminal for a sudo prompt. So `--sddm` is a
+separate flag that copies the already-rendered palette, the QML and the
+wallpaper into place. `--theme` warns when the greeter has gone stale and
+`check.sh`'s `login screen` section fails on it, because a wrong-coloured
+greeter looks like a choice.
+
+**hyprpaper remembers nothing.** `hyprctl hyprpaper wallpaper` lasts exactly as
+long as the process, so the wallpaper was lost at every login. What survives is
+`~/.config/hypr/hyprpaper.conf`, which `set_wallpaper()` rewrites on every
+change and autostart's `hyprpaper` reads. The IPC call is what you see now; the
+file is what logs in. Both, always.
 
 **qt6ct does not reach KDE applications.** KDE Frameworks apps build their
 palette from `KColorScheme`, which reads `~/.config/kdeglobals` and bypasses the
@@ -463,6 +478,26 @@ How distinct the palette is overall is `theme.style` (matugen `--type`) and
 **`scheme-expressive`**, chosen by comparing them on the real palette. Matugen's
 own default, `scheme-tonal-spot`, is deliberately muted; that is a Material
 decision rather than a bug, so do not "fix" it by changing the template.
+
+**Contrast against an opaque role is not the contrast you get.** Nothing in this
+shell is opaque: the island is `surfaceContainer` at 0.72 and the panels are
+`surfaceContainerLow` at 0.86, both composited over a blurred wallpaper. A
+palette can clear 4.5:1 against the flat role and still be unreadable once a
+third of the picture shows through. `check.sh`'s `colour` section now composites
+over a black and a white wallpaper and gates the worse one at 3:1 — WCAG's
+floor for large text, not 4.5, because a translucent surface cannot reach 4.5
+against both extremes and a check that can never pass is worthless. It reads
+the alphas out of `Theme.qml` rather than repeating them, so changing one in the
+shell cannot leave the check testing the old number.
+
+**Contrast is direction-blind, and that hid a whole bug class.** A *light*
+palette rendered while `theme.scheme` says `dark` passes every contrast pair —
+black on white is 21:1 — and produces black text on islands that are still
+translucent over a dark wallpaper. The `colour` section now compares the
+polarity it got against the one `settings.json` asked for, and rejects a value
+that is not `#rrggbb` at all: an unsubstituted `{{colors.x.default.hex}}` is
+valid JSON, survives every role-based check, and renders in QML as **black**,
+because an invalid colour string does not warn.
 
 **`matugen image` aborts when it cannot ask a question.** An image with several
 candidate source colours makes it prompt — and when the shell launched it there

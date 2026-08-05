@@ -130,14 +130,12 @@ Item {
 
                         Item { width: 1; height: 3 }
 
-                        LevelBar {
+                        SeekBar {
                             width: parent.width
-                            height: 3
                             visible: Media.length > 0
-                            value: Media.length > 0 ? Media.position / Media.length : 0
-                            // Position updates continuously; animating it fights
-                            // the real value and lags behind the audio.
-                            animate: false
+                            fraction: Media.length > 0 ? Media.position / Media.length : 0
+                            seekable: Media.canSeek && Media.length > 0
+                            onSeekRequested: f => Media.seekToFraction(f)
                         }
 
                         Row {
@@ -166,8 +164,18 @@ Item {
                                 onClicked: Media.previous()
                             }
                             CtlButton {
+                                glyph: ""
+                                enabled: Media.canSeek
+                                onClicked: Media.seekBy(-10)
+                            }
+                            CtlButton {
                                 glyph: Media.playing ? "" : ""
                                 onClicked: Media.toggle()
+                            }
+                            CtlButton {
+                                glyph: ""
+                                enabled: Media.canSeek
+                                onClicked: Media.seekBy(10)
                             }
                             CtlButton {
                                 glyph: ""
@@ -302,6 +310,67 @@ Item {
         }
     }
 
+    // The progress bar, made draggable.
+    //
+    // Two things it has to get right. A 3px bar is not a hit target, so the
+    // item is 14px tall and only the fill is thin — the MouseArea fills the
+    // item, not the bar. And while you are dragging, the bar has to follow the
+    // POINTER: bound to Media.position it would snap back on every frame until
+    // the player caught up, which reads as the drag being ignored.
+    component SeekBar: Item {
+        property real fraction: 0        // where the player is, 0-1
+        property bool seekable: false
+        signal seekRequested(real fraction)
+
+        implicitHeight: 14
+        readonly property real shown: seekMa.pressed ? seekMa.frac : fraction
+
+        LevelBar {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            height: 3
+            value: parent.shown
+            // Position updates continuously; animating it fights the real
+            // value and lags behind the audio.
+            animate: false
+        }
+
+        // Shown only while the pointer is on the bar. A permanent handle on a
+        // 3px line is visual noise for something you touch once a track.
+        Rectangle {
+            visible: parent.seekable && (seekMa.containsMouse || seekMa.pressed)
+            width: 9
+            height: 9
+            radius: 4.5
+            color: Theme.primary
+            anchors.verticalCenter: parent.verticalCenter
+            x: parent.shown * (parent.width - width)
+        }
+
+        MouseArea {
+            id: seekMa
+            anchors.fill: parent
+            hoverEnabled: true
+            enabled: parent.seekable
+            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+            property real frac: 0
+            function at(x) {
+                frac = Math.max(0, Math.min(1, x / width));
+            }
+
+            // A click without a drag is a seek too — press, then release at the
+            // same place, which is the common case for "jump to here".
+            onPressed: mouse => at(mouse.x)
+            onPositionChanged: mouse => { if (pressed) at(mouse.x); }
+            onReleased: mouse => {
+                at(mouse.x);
+                parent.seekRequested(frac);
+            }
+        }
+    }
+
     component CtlButton: Rectangle {
         property string glyph: ""
         property bool enabled: true
@@ -339,14 +408,42 @@ Item {
             anchors.margins: 9
             spacing: 10
 
-            Rectangle {
-                width: 26; height: 26; radius: 7
-                color: Qt.alpha(Theme.primary, 0.18)
-                Glyph {
-                    anchors.centerIn: parent
-                    text: ""
-                    font.pixelSize: 12
-                    color: Theme.primary
+            // Same three-way source as the toast: attached art, the sending
+            // app's icon, then a bell. Notifs.iconFor decides; the glyph shows
+            // whenever the Image did not actually load.
+            Item {
+                id: rowMark
+                width: 26; height: 26
+
+                readonly property bool hasArt: rowPic.status === Image.Ready
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 7
+                    color: Qt.alpha(Theme.primary, 0.18)
+                    visible: !rowMark.hasArt
+                    Glyph {
+                        anchors.centerIn: parent
+                        text: ""
+                        font.pixelSize: 12
+                        color: Theme.primary
+                    }
+                }
+
+                ClippingRectangle {
+                    anchors.fill: parent
+                    radius: 7
+                    color: "transparent"
+                    visible: rowMark.hasArt
+
+                    Image {
+                        id: rowPic
+                        anchors.fill: parent
+                        source: Notifs.iconFor(modelData)
+                        fillMode: Image.PreserveAspectFit
+                        sourceSize: Qt.size(52, 52)
+                        asynchronous: true
+                    }
                 }
             }
 

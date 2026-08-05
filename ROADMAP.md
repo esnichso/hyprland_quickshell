@@ -134,7 +134,7 @@ what the feature needs — not because it was skipped:
 has never run: no theme with a `[roles]` table has been applied on a live
 session, only against a simulated matugen palette on the dev host.
 
-- matugen config + templates for all seven targets
+- matugen config + templates for all eight targets
 - `themes/*.toml` with seed + role overrides
 - Mode switch wired to the picker
 - Contrast validation in `check.sh`
@@ -142,7 +142,7 @@ session, only against a simulated matugen palette on the dev host.
 **What a VM run has to confirm**, since none of it can be checked here:
 
 - `./install/install.sh --theme catppuccin-mocha` prints
-  `20 role overrides, 6 targets re-rendered` and the desktop turns actual
+  `20 role overrides, 7 targets re-rendered` and the desktop turns actual
   Mocha — `#1e1e2e` surfaces, not a purple-tinted near-black.
 - `grep background ~/.config/kitty/colors.conf` is `#1e1e2e`, and a fastfetch
   palette strip still has sixteen distinguishable colours. The re-render
@@ -215,7 +215,6 @@ actually want them:
 - Lock screen in QuickShell via `Quickshell.Services.Pam` — needs a tested TTY
   escape hatch and hyprlock kept installed as a fallback
 - Polkit agent via `Quickshell.Services.Polkit`, dropping `hyprpolkitagent`
-- SDDM theme regenerated from the palette
 - Media in the notch's resting state, if you find you miss it
 - Multi-monitor design, when you dock something
 
@@ -244,4 +243,28 @@ _Populated during Phases 3 and 4. Issue, cause, whether it needs a decision._
 
 | | Issue | Cause | Needs you? |
 | --- | --- | --- | --- |
-| | | | |
+| ✅ | Wallpaper lost after every login | hyprpaper keeps nothing across restarts and autostart started it with no config. `set_wallpaper()` now writes `hyprpaper.conf` as well as pushing over IPC. | no |
+| ✅ | Notifications showed a generic bell | The toast read only `Notification.image`, which few apps set. `Notifs.iconFor()` now falls back to `appIcon` through the icon theme, then `desktopEntry`. | no |
+| ✅ | No way to skip within a track | Only prev/play/next existed. Added a draggable progress bar, ±10s buttons, and `Shift`+media keys. | no |
+| ✅ | Login screen was stock SDDM | Never built. `sddm/hypersetup/` + `install.sh --sddm`, FEATURES §9.1. | preview it |
+| ❓ | **Black text in the island and launcher** | Not diagnosed. Every text item binds `Theme.onSurface`, so the palette itself is wrong — the `colour` check now names which of the three possible causes it is. | **yes, see below** |
+
+### The black text
+
+Every `Text` in the shell binds `Theme.onSurface` or `Theme.onSurfaceVariant`
+and none is missing a colour, so this is the generated palette, not the QML.
+Three things produce it and they need different fixes, so `check.sh`'s `colour`
+section was extended to tell them apart:
+
+- **the palette is light while `theme.scheme` says dark** — every contrast pair
+  still passes, because contrast is direction-blind. Fix: `theme.scheme`.
+- **a role never got substituted**, so `colors.json` holds
+  `"{{colors.on_surface.default.hex}}"` — valid JSON, and QML draws an invalid
+  colour string as black without warning. Fix: the template or matugen's role
+  names.
+- **the palette is dark but too flat once the island's 0.72 alpha lets the
+  wallpaper through**. Fix: `theme.contrast`, per DESIGN §4.
+
+Run `./install/check.sh` and send the `colour` section. It prints the resolved
+`surface` / `on_surface` / `on_surface_variant` / `primary` values, which is
+enough to settle it without another guess.

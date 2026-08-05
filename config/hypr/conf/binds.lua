@@ -184,4 +184,14 @@ hl.bind("XF86KbdBrightnessDown",
 hl.bind("XF86AudioPlay",  hl.dsp.exec_cmd("playerctl play-pause"), hw)
 hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"),       hw)
 hl.bind("XF86AudioPrev",  hl.dsp.exec_cmd("playerctl previous"),   hw)
+
+-- Seek WITHIN the track, as opposed to changing it. This laptop has no
+-- dedicated seek keys, so they hang off Shift with the same media keys —
+-- next/previous is the track, shift+next/previous is ten seconds. `repeating`
+-- from `hw` makes holding one scrub.
+--
+-- playerctl rather than the shell: seeking has to work whether or not the
+-- dashboard is open, and `10+`/`10-` is playerctl's own relative syntax.
+hl.bind("SHIFT + XF86AudioNext", hl.dsp.exec_cmd("playerctl position 10+"), hw)
+hl.bind("SHIFT + XF86AudioPrev", hl.dsp.exec_cmd("playerctl position 10-"), hw)
 hl.bind("XF86Search",     shell("launcher"))
