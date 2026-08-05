@@ -317,6 +317,16 @@ palette from `KColorScheme`, which reads `~/.config/kdeglobals` and bypasses the
 Qt platform theme. Its colours are `r,g,b` **decimals** — a hex string parses as
 `0,0,0`.
 
+**"Applies on next app launch" does not mean "next window".** GTK reads
+`gtk.css` once, at process start — and Nautilus, like most GNOME apps, is
+**D-Bus activated and stays resident** after you close its last window. Opening
+a "new window" asks the surviving process for one; it does not start a new
+process, so it is still showing whatever palette was current when it first
+launched. The app therefore looks stale in a way that survives exactly the test
+you would use to check for staleness. `nautilus --quit` (or `pkill nautilus`)
+is what actually reloads it. Do not conclude from this that the GTK target did
+not regenerate — check the file's mtime before blaming the pipeline.
+
 **A missing GTK theme fails silently and convincingly**: GTK falls back to
 Adwaita, still honours the dark preference, and hands you a desktop that looks
 *almost* right. `gtk-theme-name` is a **name looked up on a search path**, not a
