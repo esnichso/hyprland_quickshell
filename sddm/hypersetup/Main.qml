@@ -142,13 +142,36 @@ Rectangle {
                 }
             }
 
-            Text {
+            // The login name — prefilled from the model, but ALWAYS editable.
+            //
+            // It looks like a label and behaves like one on a machine with a
+            // single user, because the model fills it in. The point of it being
+            // a field is the case that actually happened: the model gave
+            // nothing, the card showed an empty gap, and `login("")` returned
+            // silently. Now the worst case is that you type six characters.
+            TextInput {
+                id: userField
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: root.currentUser
+                width: parent.width
+                horizontalAlignment: TextInput.AlignHCenter
+                // A binding, so it fills in when the model answers late; typing
+                // replaces it, which is exactly the override we want.
+                text: root.resolvedUser
                 color: root.cOn
                 font.family: root.uiFont
                 font.pixelSize: 17
                 font.weight: Font.DemiBold
+                enabled: !root.busy
+                onAccepted: pw.forceActiveFocus()
+
+                Text {
+                    anchors.centerIn: parent
+                    visible: userField.text.length === 0
+                    text: "username"
+                    color: root.cError
+                    font.family: root.uiFont
+                    font.pixelSize: 15
+                }
             }
 
             // Password field. A plain TextInput rather than a Controls
@@ -178,7 +201,13 @@ Rectangle {
                     passwordCharacter: "\u2022"
                     enabled: !root.busy
                     focus: true
+                    // Both, deliberately. `accepted` is the documented signal,
+                    // and the key handlers are the belt: `busy` makes a double
+                    // call harmless, whereas a signal that never fires is a
+                    // login screen that does nothing when you press Enter.
                     onAccepted: root.tryLogin()
+                    Keys.onReturnPressed: root.tryLogin()
+                    Keys.onEnterPressed: root.tryLogin()
                 }
 
                 Text {
@@ -207,44 +236,123 @@ Rectangle {
             // click the wrong thing twice.
             Text {
                 width: parent.width
-                height: 16
+                height: 30
                 text: root.message
                 color: root.cError
                 font.family: root.uiFont
                 font.pixelSize: 12
                 horizontalAlignment: Text.AlignHCenter
-                elide: Text.ElideRight
+                // Wraps rather than elides: the diagnostic messages put the
+                // values at the END, which is exactly what eliding removes.
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
             }
         }
     }
 
     // ---- who is logging in ------------------------------------------------
-    // Single-user machine, so the last user is the user. `lastUser` is a plain
-    // string; reading userModel's roles would need role indices, which differ
-    // between SDDM versions.
-    readonly property string currentUser:
-        (typeof userModel !== "undefined" && userModel.lastUser) ? userModel.lastUser : ""
+    //
+    // `userModel.lastUser` looked like the obvious source and came back EMPTY
+    // on this machine. That failure is completely silent: the card just has no
+    // name on it, and `sddm.login("", ...)` does NOTHING — no error, no
+    // loginFailed, the greeter simply sits there. Which is exactly what it did.
+    //
+    // So the model is read by ROLE NAME through a Repeater, the same way the
+    // session list is, and `lastUser` is only a preference layered on top. A
+    // delegate resolves `model.name` by name; reading the model directly would
+    // mean hardcoding Qt.UserRole + n, and SDDM has reordered those.
+    property string modelUser: ""
+
+    // What the model thinks; what gets sent is whatever is in the field.
+    readonly property string resolvedUser:
+        (typeof userModel !== "undefined" && userModel.lastUser)
+            ? String(userModel.lastUser) : modelUser
+
+    readonly property string currentUser: userField.text.trim()
+
+    Repeater {
+        id: users
+        model: typeof userModel !== "undefined" ? userModel : 0
+
+        Item {
+            required property int index
+            required property var model
+
+            readonly property int want:
+                (typeof userModel !== "undefined" && userModel.lastIndex >= 0)
+                    ? userModel.lastIndex : 0
+
+            function take() {
+                if (index !== want)
+                    return;
+                root.modelUser = model.name || "";
+            }
+
+            onWantChanged: take()
+            Component.onCompleted: take()
+        }
+    }
 
     property int sessionIndex:
         (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0)
             ? sessionModel.lastIndex : 0
 
     function tryLogin() {
-        if (busy || pw.text.length === 0)
+        if (busy)
             return;
+        // Every one of these used to fail silently. On a login screen there is
+        // no terminal to read a warning in, so the screen has to say it.
+        if (currentUser.length === 0) {
+            message = "Type your username first";
+            userField.forceActiveFocus();
+            return;
+        }
+        if (pw.text.length === 0) {
+            message = "Enter your password";
+            return;
+        }
+
         busy = true;
         message = "";
-        sddm.login(root.currentUser, pw.text, root.sessionIndex);
+        watchdog.restart();
+
+        // A JS error here would land in the greeter's stderr, which is in the
+        // journal, which you cannot reach from the login screen.
+        try {
+            sddm.login(root.currentUser, pw.text, root.sessionIndex);
+        } catch (e) {
+            busy = false;
+            watchdog.stop();
+            message = "login() failed: " + e;
+        }
+    }
+
+    // sddm answers every login with loginSucceeded or loginFailed. If neither
+    // arrives, the greeter would sit with a dead password field and no
+    // explanation — which is what an empty user or a bad session index looks
+    // like from the outside. Name both in the message; they are the two things
+    // being passed.
+    Timer {
+        id: watchdog
+        interval: 5000
+        onTriggered: {
+            root.busy = false;
+            root.message = "no answer from sddm (user '" + root.currentUser
+                         + "', session " + root.sessionIndex + ")";
+            pw.forceActiveFocus();
+        }
     }
 
     Connections {
         target: sddm
 
         function onLoginSucceeded() {
+            watchdog.stop();
             root.message = "";
         }
 
         function onLoginFailed() {
+            watchdog.stop();
             root.busy = false;
             root.message = "Wrong password";
             pw.text = "";
