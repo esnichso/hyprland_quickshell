@@ -34,11 +34,16 @@ if type -q fzf
 end
 
 # --- better defaults ------------------------------------------------------
+# `--icons=auto`, never a bare `--icons`. eza's flag takes an OPTIONAL value
+# (always|auto|never), so a bare `--icons` swallows the next word on the command
+# line as that value: `ls Downloads` becomes `eza --icons Downloads` and fails
+# with "invalid value 'Downloads' for '--icons <WHEN>'". Only ever visible when
+# the alias is given an argument, which is why it looked intermittent.
 if type -q eza
-    alias ls 'eza --group-directories-first --icons'
-    alias ll 'eza -l --group-directories-first --icons --git'
-    alias la 'eza -la --group-directories-first --icons --git'
-    alias lt 'eza --tree --level=2 --icons'
+    alias ls 'eza --group-directories-first --icons=auto'
+    alias ll 'eza -l --group-directories-first --icons=auto --git'
+    alias la 'eza -la --group-directories-first --icons=auto --git'
+    alias lt 'eza --tree --level=2 --icons=auto'
 end
 
 if type -q bat

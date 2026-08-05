@@ -154,7 +154,12 @@ fi
 
 sec "symlinks"
 
-for d in hypr quickshell matugen kitty fish gtk-3.0 gtk-4.0 qt6ct uwsm; do
+# Derived from the repo, not listed here. install.sh --link symlinks EVERY
+# directory under config/, so a hardcoded list silently stops checking whatever
+# was added last — which is how a new config directory ends up unlinked on one
+# machine and nobody notices.
+for src in "$REPO"/config/*; do
+    d="$(basename "$src")"
     t="$CONFIG_HOME/$d"
     if [[ -L "$t" && "$(readlink -f "$t")" == "$REPO/config/$d" ]]; then
         ok "$d"
@@ -300,6 +305,195 @@ fi
 for f in kitty/colors.conf hypr/conf/colors.lua gtk-3.0/colors.css qt6ct/colors/hypersetup.conf; do
     [[ -f "$CONFIG_HOME/$f" ]] && ok "generated: $f" || no "missing: $f — run install.sh --theme"
 done
+
+# --------------------------------------------------------- desktop theming
+
+sec "desktop theming"
+
+# The colour section above proves the PALETTE is right. This section proves the
+# two toolkits can actually apply it — a different failure with the same look.
+#
+# Both of the checks here exist because the corresponding failure is silent and
+# convincing. GTK falls back to Adwaita when its theme is missing, still honours
+# the dark preference, and hands you a desktop that looks almost right. qt6ct
+# reads a malformed colour scheme, applies whatever parsed, and says nothing.
+
+gtk_ini="$REPO/config/gtk-3.0/settings.ini"
+gtk_val() { sed -n "s/^$1=//p" "$gtk_ini" | head -1; }
+
+# "Is Papirus installed" is a fact about THIS MACHINE, so it only means anything
+# inside the session. On the dev host it is true and useless. The stylesheet
+# parse below is the one part of this section that is a fact about the repo, so
+# it runs everywhere.
+in_session=0
+[[ "${XDG_CURRENT_DESKTOP:-}" == "Hyprland" ]] && in_session=1
+
+if (( in_session )); then
+
+# --- the GTK theme has to exist as a directory somewhere on the search path ---
+#
+# gtk-theme-name is a NAME, not a path, and GTK looks it up in three places. On
+# Arch, Adwaita-dark specifically comes from gnome-themes-extra: GTK3 has only
+# Adwaita compiled in, and "Adwaita-dark" is a separate index.theme that package
+# ships. Without it you get plain Adwaita plus prefer-dark and no complaint.
+theme_name="$(gtk_val gtk-theme-name)"
+if [[ -z "$theme_name" ]]; then
+    no "gtk-theme-name not set in config/gtk-3.0/settings.ini"
+else
+    found=""
+    for base in "$HOME/.themes" "$HOME/.local/share/themes" /usr/share/themes; do
+        [[ -f "$base/$theme_name/index.theme" ]] && { found="$base/$theme_name"; break; }
+    done
+    if [[ -n "$found" ]]; then
+        ok "gtk theme $theme_name ($found)"
+    else
+        no "gtk theme '$theme_name' is not installed — GTK will fall back to Adwaita and look almost right (pacman -S gnome-themes-extra)"
+    fi
+fi
+
+# --- icon and cursor themes, same failure mode ---
+icon_name="$(gtk_val gtk-icon-theme-name)"
+if [[ -n "$icon_name" ]]; then
+    found=""
+    for base in "$HOME/.local/share/icons" "$HOME/.icons" /usr/share/icons; do
+        [[ -f "$base/$icon_name/index.theme" ]] && { found="$base/$icon_name"; break; }
+    done
+    [[ -n "$found" ]] && ok "icon theme $icon_name" \
+                      || no "icon theme '$icon_name' is not installed (pacman -S papirus-icon-theme)"
+fi
+
+cursor_name="$(gtk_val gtk-cursor-theme-name)"
+if [[ -n "$cursor_name" ]]; then
+    found=""
+    for base in "$HOME/.local/share/icons" "$HOME/.icons" /usr/share/icons; do
+        [[ -d "$base/$cursor_name/cursors" ]] && { found="$base/$cursor_name"; break; }
+    done
+    [[ -n "$found" ]] && ok "cursor theme $cursor_name" \
+                      || no "cursor theme '$cursor_name' has no cursors/ directory — you get the X11 default X"
+fi
+
+else
+    sk "gtk/qt theme lookups — not in the Hyprland session, these are machine facts"
+fi
+
+# --- the GTK stylesheets parse, according to GTK ---
+#
+# GTK CSS is not web CSS, and one unknown property or pseudo-class makes GTK
+# reject the ENTIRE stylesheet with no error printed — the app is simply
+# unstyled. Only GTK's own parser knows what it accepts, so this loads the file
+# through GtkCssProvider.load_from_path (from_path, not from_data, so the
+# @import of colors.css resolves relative to it).
+#
+# ONE PROCESS PER TOOLKIT VERSION, deliberately: GTK 3 and GTK 4 do not accept
+# the same CSS, and a single python process cannot import both. Checking the
+# GTK4 sheet with GTK3's parser would be an approximation dressed up as a
+# verdict — the qmllint-stub mistake in a different coat.
+for ver in gtk-3.0 gtk-4.0; do
+    python3 - "$REPO/config" "$ver" <<'GTKCSS'
+import sys, warnings
+warnings.filterwarnings("ignore")
+
+cfg, ver = sys.argv[1], sys.argv[2]
+api = "3.0" if ver == "gtk-3.0" else "4.0"
+
+try:
+    import gi
+    gi.require_version("Gtk", api)
+    from gi.repository import Gtk
+except Exception:
+    print(f"\033[33m – \033[0m {ver}/gtk.css: no GTK {api} python bindings \033[2m(skipped)\033[0m")
+    sys.exit(2)
+
+path = f"{cfg}/{ver}/gtk.css"
+try:
+    open(path).close()
+except OSError:
+    print(f"\033[33m – \033[0m {ver}/gtk.css missing \033[2m(skipped)\033[0m")
+    sys.exit(2)
+
+# colors.css is generated and gitignored. Its absence is already reported by the
+# colour section; parsing without it would fail on the @import and blame the
+# wrong file.
+try:
+    open(f"{cfg}/{ver}/colors.css").close()
+except OSError:
+    print(f"\033[33m – \033[0m {ver}/gtk.css: colors.css not generated yet \033[2m(skipped)\033[0m")
+    sys.exit(2)
+
+errs = []
+prov = Gtk.CssProvider()
+prov.connect("parsing-error", lambda p, sect, err, acc=errs: acc.append(err.message))
+try:
+    prov.load_from_path(path)
+except Exception as e:
+    errs.append(str(e))
+
+if errs:
+    print(f"\033[31m ✗ \033[0m {ver}/gtk.css rejected by GTK {api}: {errs[0]}")
+    sys.exit(1)
+print(f"\033[32m ✓ \033[0m {ver}/gtk.css parses (GTK {api}'s own parser)")
+GTKCSS
+    case $? in
+        0) pass=$((pass+1)) ;;
+        2) skip=$((skip+1)) ;;
+        *) fail=$((fail+1)) ;;
+    esac
+done
+
+# --- the qt6ct colour scheme is complete ---
+#
+# Qt colour schemes are POSITIONAL: 21 colours per group, three groups. A short
+# list is not an error — qt6ct applies what it parsed and leaves the rest at
+# Fusion's defaults, so the app looks themed but a few roles are wrong.
+qtcolors="$CONFIG_HOME/qt6ct/colors/hypersetup.conf"
+if (( ! in_session )); then
+    sk "qt6ct palette — generated on the target machine, nothing to read here"
+elif [[ -f "$qtcolors" ]]; then
+    python3 - "$qtcolors" <<'PY'
+import sys, re
+path = sys.argv[1]
+txt = open(path).read()
+bad = []
+for group in ("active", "disabled", "inactive"):
+    m = re.search(rf"^{group}_colors=(.*)$", txt, re.M)
+    if not m:
+        bad.append(f"{group}_colors missing")
+        continue
+    vals = [v.strip() for v in m.group(1).split(",")]
+    if len(vals) != 21:
+        bad.append(f"{group}_colors has {len(vals)} colours, needs 21")
+    off = [v for v in vals if not re.fullmatch(r"#[0-9a-fA-F]{8}", v)]
+    if off:
+        bad.append(f"{group}_colors: {off[0]} is not #aarrggbb")
+if bad:
+    print(f"\033[31m ✗ \033[0m qt6ct palette: {bad[0]}")
+    sys.exit(1)
+print("\033[32m ✓ \033[0m qt6ct palette: 3 groups x 21 colours, all #aarrggbb")
+PY
+    if (( $? == 0 )); then pass=$((pass+1)); else fail=$((fail+1)); fi
+else
+    no "qt6ct palette missing: $qtcolors — run install.sh --theme"
+fi
+
+# --- and Qt is actually told to use qt6ct (session only) ---
+if (( in_session )); then
+    if [[ "${QT_QPA_PLATFORMTHEME:-}" == "qt6ct" ]]; then
+        ok "QT_QPA_PLATFORMTHEME=qt6ct"
+    else
+        no "QT_QPA_PLATFORMTHEME is '${QT_QPA_PLATFORMTHEME:-unset}' — qt6ct's palette reaches nothing"
+    fi
+
+    # KNOWN GAP, not a failure. KDE Frameworks apps build their palette from
+    # KColorScheme, which reads ~/.config/kdeglobals and bypasses the Qt
+    # platform theme entirely — so qt6ct does not reach them. There is no
+    # kdeglobals matugen target yet; until there is, this is a skip that says
+    # so rather than a check that cannot pass.
+    if [[ -f "$CONFIG_HOME/kdeglobals" ]]; then
+        ok "kdeglobals present (KDE apps themed)"
+    else
+        sk "kdeglobals — KDE-framework apps use their own palette, no matugen target for it yet"
+    fi
+fi
 
 # ------------------------------------------------------------- login screen
 

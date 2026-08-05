@@ -54,6 +54,15 @@ name is a coin flip at login — `check.sh` fails if any of these are present.
 | `qt6ct` | extra | Applies the generated palette to Qt apps |
 | `nwg-look` | extra | GTK settings GUI — only for one-off fixes, not in the pipeline |
 | `papirus-icon-theme` | extra | Icon theme; recolourable to match |
+| `gnome-themes-extra` | extra | Provides `/usr/share/themes/Adwaita-dark`, which `gtk-3.0/settings.ini` names. GTK3 has only plain **Adwaita** compiled in — without this, GTK silently falls back to it, still honours `prefer-dark`, and hands you a desktop that looks *almost* right. `check.sh`'s `desktop theming` section fails on it. |
+
+**Qt theming has a hole, on purpose.** `qt6ct` covers plain Qt apps, but KDE
+Frameworks apps build their palette from `KColorScheme`, which reads
+`~/.config/kdeglobals` and bypasses the Qt platform theme entirely. There is no
+kdeglobals matugen target, so a KDE app is unthemed. Nothing in this desktop is
+a KDE app today; `check.sh` reports it as a **skip** with that reason rather
+than a failure, because a check that can never pass is worthless. Adding it
+means adding a template, never a second mechanism.
 
 ## Hardware — Intel Arrow Lake / ThinkPad E16 Gen 3
 
@@ -91,13 +100,42 @@ name is a coin flip at login — `check.sh` fails if any of these are present.
 | Package | Repo | Why |
 | --- | --- | --- |
 | `kitty` | extra | Terminal. Chosen for its control socket — the theme pipeline pushes a new palette to every running instance live. |
-| `zen-browser-bin` | AUR | Browser, bound to `SUPER+B`. Firefox-based; the sidebar tab strip suits a tiling WM. The only AUR package here, and it rebuilds on updates. |
+| `zen-browser-bin` | AUR | Browser, bound to `SUPER+B`. Firefox-based; the sidebar tab strip suits a tiling WM. The only AUR package here. |
+
+### Why Zen from the AUR and not Flatpak
+
+Zen is in neither `extra` nor the CachyOS repos — verified against the live API,
+not assumed — so the real choice is `zen-browser-bin` (AUR) or
+`app.zen_browser.zen` (Flathub). The AUR package wins here for reasons specific
+to *this* repo, not general taste:
+
+- **`-bin` does not build.** The usual AUR objection is rebuild time on every
+  update; this package unpacks an official upstream tarball, so an update is a
+  download, not a compile. The objection does not apply.
+- **Flatpak cannot see the theme.** A sandboxed app does not read
+  `~/.config/gtk-3.0`, and the GTK theme, the icon theme and the cursor theme
+  all have to be re-provided inside the sandbox — as runtime extensions plus
+  `flatpak override --filesystem=` lines. That is a **second theming mechanism**,
+  which is the one structural rule this repo does not bend (CLAUDE.md,
+  "Colour has exactly one code path"). Its cursor and font sizes would drift
+  from the rest of the desktop and nothing would report it.
+- **The env vars in `conf/env.lua` do not reach it.** `MOZ_ENABLE_WAYLAND=1` and
+  `LIBVA_DRIVER_NAME=iHD` are exported by Hyprland to its children; a Flatpak
+  gets the runtime's environment instead. On this machine that specifically
+  costs Intel Arc hardware video decode, which `env.lua` calls out as a battery
+  issue on video calls.
+- **Native messaging and file access** go through portals, so KeePassXC-style
+  integrations and "open with" need per-app overrides.
+
+Flatpak is the better answer when the app is not packaged, needs a different
+runtime than the system, or you want it sandboxed on purpose. None of those is
+true here.
 | `fish` | extra | Shell |
 | `starship` | extra | Prompt, themed from the palette |
 | `thunar` `thunar-volman` `tumbler` `ffmpegthumbnailer` `gvfs` | extra | File manager and thumbnails |
 | `udiskie` | extra | Automount removable media |
 | `btop` | extra | The real system monitor for when the panel isn't enough |
-| `fastfetch` | extra | Because you will screenshot this |
+| `fastfetch` | extra | Because you will screenshot this. Configured in `config/fastfetch/config.jsonc`; it takes its colours from the **terminal's ANSI palette**, which the kitty template already generates, so it needs no matugen target of its own. Its `theme` / `icons` / `font` / `cursor` modules read the live GTK settings, which makes it a one-command answer to "did GTK theming apply?". |
 | `mpv` `imv` | extra | Video and image viewers |
 
 ## Shell tooling

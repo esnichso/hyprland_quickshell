@@ -252,6 +252,11 @@ _Populated during Phases 3 and 4. Issue, cause, whether it needs a decision._
 | ✅ | Login screen would not load at all | `import QtQuick` with no version is Qt 6 syntax; sddm's engine rejected it and fell back to breeze. The theme is now Qt 5/Qt 6 portable throughout, and both `--sddm` and `check.sh` refuse an unversioned import. | preview it |
 | ✅ | Login accepted a password and did nothing | `userModel.lastUser` was empty, so it called `login("", …)`, which sddm answers with silence. The username is a prefilled but editable field now, and a watchdog names the user and session when no answer comes back. | no |
 | ✅ | `check.sh` called a healthy shell dead | `pgrep -x quickshell` — the binary is `qs`; and `qs list` lists instances, not configs. Both greps were written against output nobody had read. | no |
+| ✅ | `ls <anything>` failed with "invalid value for `--icons`" | eza's `--icons` takes an optional `always|auto|never`, so a bare flag swallows the next argument. Now `--icons=auto` in all four aliases. | no |
+| ✅ | Bar never showed the audio level | The volume glyph was conditional on *muted*, so a working system said nothing about it. Now always visible: three speaker levels plus the percentage, click to mute. | no |
+| ✅ | fastfetch ran on stock defaults | There was no `config/fastfetch/` at all. Added one; it draws from the ANSI palette the kitty template already generates, so it themes itself with no new matugen target. | no |
+| ✅ | GTK and Qt theming had no check | `check.sh` gained a `desktop theming` section: the GTK stylesheets are parsed by GTK's own provider (one process per toolkit version), the named GTK/icon/cursor themes are resolved on the real search path, and the qt6ct scheme is checked for its 3×21 colours. Found a missing dependency — `gnome-themes-extra`, which provides the `Adwaita-dark` the settings ask for by name. | no |
+| ⬜ | KDE-framework apps are unthemed | `KColorScheme` reads `~/.config/kdeglobals` and bypasses qt6ct entirely. No matugen target for it; `check.sh` reports it as a skip. Nothing installed today needs it. | if you install a KDE app |
 
 ### The black text, and how it was found
 

@@ -146,7 +146,7 @@ they're not in the boring state, so the island stays short.
 | Network | `Quickshell.Networking` | Wifi arc by signal strength, or ethernet glyph, or a crossed wifi when down | no |
 | Bluetooth | `Quickshell.Bluetooth` | Glyph; filled when a device is connected | yes — hidden when the adapter is off |
 | Mic | `Quickshell.Services.Pipewire` | Crossed mic | yes — only when muted |
-| Volume | `Quickshell.Services.Pipewire` | Speaker glyph | yes — only when muted or >100% |
+| Volume | `Quickshell.Services.Pipewire` | Speaker glyph at one of three levels, + `42%` | **no** — always visible |
 | Battery | `Quickshell.Services.UPower` | `87%` + glyph | no |
 
 Battery detail:
@@ -156,10 +156,25 @@ Battery detail:
 - On a desktop or in a VM with no battery, the item removes itself rather than
   showing `0%` — which is exactly the bug v1 hit in its VM round
 
+Volume detail:
+- **Always visible**, unlike the mic. The two are different kinds of thing: the
+  mic is a mode you switch into and back out of, so "unmuted" is genuinely not
+  worth a glyph — output volume is a level you want to read without opening
+  anything, and a bar that only mentions audio when it is *wrong* makes you open
+  the control centre to answer "how loud is this".
+- Three glyph levels, because that is how many the classic Font Awesome speaker
+  has: no waves (≤33%), one wave (≤66%), two waves (above). Muted reuses the
+  no-wave glyph in `error` and is told apart by colour and by the number beside
+  it — the crossed-out speaker lives in a Nerd Fonts v3 block this repo cannot
+  verify without a session.
+- The percentage is there so muted and quiet are never ambiguous, and so you can
+  see what you are unmuting back to.
+
 **Clicks** open the relevant panel: network → control centre on the Network
-tab, bluetooth → Bluetooth tab, volume → Audio tab, battery → power/profiles.
-**Scroll** on the volume area adjusts the default sink even when the icon is
-hidden.
+tab, bluetooth → Bluetooth tab, battery → power/profiles. The volume glyph
+itself toggles mute, which is the one action worth a single click.
+**Scroll anywhere on the island** adjusts the default sink — not just over the
+volume item.
 
 ### 1.4 System tray
 

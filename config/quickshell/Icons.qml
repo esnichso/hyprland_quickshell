@@ -37,6 +37,7 @@ Singleton {
 
         // audio
         "volume": "",
+        "volumeDown": "",
         "volumeOff": "",
         "mic": "",
         "micOff": "",
@@ -77,6 +78,7 @@ Singleton {
     readonly property string globe: glyphs.globe
     readonly property string bluetooth: glyphs.bluetooth
     readonly property string volume: glyphs.volume
+    readonly property string volumeDown: glyphs.volumeDown
     readonly property string volumeOff: glyphs.volumeOff
     readonly property string mic: glyphs.mic
     readonly property string micOff: glyphs.micOff

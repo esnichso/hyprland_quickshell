@@ -128,7 +128,7 @@ parse locally. Lua parses via `luaparser` in a venv (`luac` is not installed).
 at a Qt5 binary that does not exist, and it fails identically on valid and
 invalid input, so its verdict means nothing.
 
-`./install/check.sh` runs from the repo anywhere, and four of its sections are
+`./install/check.sh` runs from the repo anywhere, and five of its sections are
 pure static checks that need no session. Run it before every push:
 
 - **config keys** — diffs every key in `config/hypr` against the 518 keys the
@@ -140,6 +140,16 @@ pure static checks that need no session. Run it before every push:
 - **templates** — the contract that lets `install.sh` re-render matugen's
   templates itself: placeholder forms it implements, roles that exist in
   `colors.json`, `[roles]` keys that resolve, and each theme's own contrast.
+- **desktop theming**, in part — `gtk-3.0/gtk.css` and `gtk-4.0/gtk.css` are
+  loaded through **GTK's own `GtkCssProvider`**, one python process per toolkit
+  version because GTK 3 and GTK 4 do not accept the same CSS and one process
+  cannot import both. This is the one linter here that is not a stub: it was
+  injection-tested and rejects an invalid pseudo-class under GTK 3 and an
+  unknown property under GTK 4. It skips loudly until `--theme` has generated
+  `colors.css`, because the `@import` would otherwise fail and blame the wrong
+  file. The rest of that section — is the named GTK theme actually installed,
+  does the qt6ct palette have its 3×21 colours — is a fact about the machine,
+  so it only runs inside the session.
 
 The first three exist because the corresponding mistake shipped once; the
 fourth exists because the renderer it guards cannot be exercised here. None of
@@ -298,7 +308,18 @@ Qt platform theme. Its colours are `r,g,b` **decimals** — a hex string parses 
 
 **A missing GTK theme fails silently and convincingly**: GTK falls back to
 Adwaita, still honours the dark preference, and hands you a desktop that looks
-*almost* right.
+*almost* right. `gtk-theme-name` is a **name looked up on a search path**, not a
+path — and on Arch, `Adwaita-dark` specifically comes from `gnome-themes-extra`,
+because GTK3 has only plain Adwaita compiled in. `check.sh`'s `desktop theming`
+section resolves the name against `~/.themes`, `~/.local/share/themes` and
+`/usr/share/themes` for exactly this reason, and does the same for the icon and
+cursor themes.
+
+**A flag with an OPTIONAL value eats the next argument.** eza's `--icons` takes
+`always|auto|never`, so `alias ls 'eza --icons'` turns `ls Downloads` into
+`eza --icons Downloads` and fails with *"invalid value 'Downloads' for
+`--icons <WHEN>`"*. It looks intermittent because it only fires when the alias
+is given an argument. Always write the value: `--icons=auto`.
 
 **SDDM never reads `$HOME`.** It runs as the `sddm` user on its own VT before
 any user session exists, so no symlink into `~/.config` is visible to it and

@@ -40,6 +40,11 @@ matugen
 qt6ct
 nwg-look
 papirus-icon-theme
+# Provides /usr/share/themes/Adwaita-dark, which gtk-3.0/settings.ini asks for
+# by name. GTK3 has only plain Adwaita compiled in; without this package GTK
+# falls back to it, still honours prefer-dark, and looks almost right — the
+# silent failure check.sh's `desktop theming` section exists to catch.
+gnome-themes-extra
 
 # --- hardware: Intel Arrow Lake / ThinkPad E16 Gen 3 ---
 mesa

@@ -1,8 +1,9 @@
 // Right island — tray, network, bluetooth, audio, battery.
 //
 // Items marked conditional render only when they are NOT in the boring state,
-// so the island stays short. Battery and network are always visible; that was
-// an explicit requirement.
+// so the island stays short. Network, volume and battery are always visible;
+// that was an explicit requirement. Bluetooth and the mic are conditional,
+// because "off" and "unmuted" are states you never need to look up.
 //
 // Icons are Nerd Font glyphs. ttf-nerd-fonts-symbols is a hard dependency —
 // without it every icon is a replacement box.
@@ -50,10 +51,21 @@ IslandSurface {
     // easy way to end up with two components disagreeing about the volume.
     readonly property bool micMuted: Audio.micMuted
     readonly property bool volMuted: Audio.muted
+    readonly property int volPct: Math.round(Audio.volume * 100)
 
-    // Scroll anywhere on the island adjusts the default sink, even when the
-    // volume glyph is hidden. The OSD appears because Audio's volume changed,
-    // not because this handler asked for it.
+    // Three levels, because that is how many the classic Font Awesome speaker
+    // has: no waves, one wave, two waves. Muted reuses the no-wave glyph and
+    // is told apart by colour and by the number beside it, rather than by a
+    // fourth glyph — the crossed-out speaker lives in a Nerd Fonts v3 block
+    // this repo cannot verify without a session (see Icons.qml).
+    readonly property string volGlyph:
+          volMuted || volPct <= 33 ? Icons.volumeOff
+        : volPct <= 66             ? Icons.volumeDown
+        :                            Icons.volume
+
+    // Scroll anywhere on the island adjusts the default sink — not just over
+    // the volume item. The OSD appears because Audio's volume changed, not
+    // because this handler asked for it.
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.NoButton
@@ -177,12 +189,43 @@ IslandSurface {
             color: Theme.error
         }
 
-        // --- volume, only when muted ---
-        Glyph {
+        // --- volume ---
+        //
+        // Always visible, unlike the mic. The mic is a mode you switch into and
+        // out of; output volume is a level you want to read at a glance without
+        // opening anything, and a bar that only mentions audio when it is wrong
+        // makes you open the control centre to answer "how loud is this".
+        //
+        // Scrolling anywhere on the island still changes it — that MouseArea is
+        // declared above, before the Row, so nothing here swallows the wheel.
+        Row {
+            spacing: 5
+            visible: Audio.ready
             anchors.verticalCenter: parent.verticalCenter
-            visible: root.volMuted
-            text: ""   // nf-fa-volume_off
-            color: Theme.error
+
+            Glyph {
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.volGlyph
+                color: root.volMuted ? Theme.error : Theme.textOnSurfaceVariant
+
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Audio.toggleMute()
+                }
+            }
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: `${root.volPct}%`
+                color: root.volMuted ? Theme.error : Theme.textOnSurface
+                font.family: "Inter"
+                font.pixelSize: 13
+                font.weight: Font.Medium
+                font.features: ({ "tnum": 1 })
+                Behavior on color { ColorAnimation { duration: Config.fadeMs } }
+            }
         }
 
         // --- battery ---
