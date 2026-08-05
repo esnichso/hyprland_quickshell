@@ -101,20 +101,24 @@ In descending order of daily value:
 5. ~~System monitor~~ **built**
 6. ~~Wallpaper + theme picker~~ **built**
 
-**Ship-able checkpoint:** after the launcher and dashboard, the desktop is
-already usable daily. Everything after that is improvement, not blocker.
-**Both are now built** — this is the checkpoint, pending a VM run.
+**All six have now been opened in the VM and all six work.** One defect came out
+of it — the control centre's body snapped to the new tab's height while the
+panel was still easing open, so a taller tab drew its text below the panel edge;
+see the fix list. The Network and Bluetooth tabs rendered but had nothing to
+talk to, which is a Phase 3 item, not a 2e one.
 
 Deliberately deferred out of the launcher, each a bounded addition rather than
 a rework:
 
 | Deferred | Why |
 | --- | --- |
-| Clipboard image thumbnails | Needs `cliphist decode` per visible row into a cache file. A process per row, and no way to verify the result without a session. |
 | Unit conversion in `=` | A units-aware parser is a project, not a feature. The arithmetic parser it would extend is tested. |
 | `=` recalling the last result | Needs a result history, which is state nothing else wants yet. |
 | Per-app frecency decay tuning | The 30-day half-life is a guess. It needs weeks of real use before it means anything. |
-| Tray right-click menus (`Quickshell.DBusMenu`) | Left over from 2b; unrelated to the launcher but the same "panel content" bucket. |
+
+Clipboard image thumbnails and tray right-click menus were on this list and both
+shipped in `d00d0bc`. The tray work is still **unverified**: nothing in the VM
+publishes a tray icon.
 
 Deferred out of the **control centre**, each because the module does not expose
 what the feature needs — not because it was skipped:
@@ -130,27 +134,15 @@ what the feature needs — not because it was skipped:
 
 ### 2f — Theming pipeline
 
-**Written, and the wallpaper half is proven in the VM.** The role-override half
-has never run: no theme with a `[roles]` table has been applied on a live
-session, only against a simulated matugen palette on the dev host.
+**Done, both halves proven in the VM.** Wallpaper mode and named themes have
+both been applied on a live session, including a theme carrying a `[roles]`
+table — which is the half that had only ever run against a simulated matugen
+palette on the dev host.
 
 - matugen config + templates for all eight targets
 - `themes/*.toml` with seed + role overrides
 - Mode switch wired to the picker
 - Contrast validation in `check.sh`
-
-**What a VM run has to confirm**, since none of it can be checked here:
-
-- `./install/install.sh --theme catppuccin-mocha` prints
-  `20 role overrides, 7 targets re-rendered` and the desktop turns actual
-  Mocha — `#1e1e2e` surfaces, not a purple-tinted near-black.
-- `grep background ~/.config/kitty/colors.conf` is `#1e1e2e`, and a fastfetch
-  palette strip still has sixteen distinguishable colours. The re-render
-  touches every ANSI line, so this is where a broken renderer would show.
-- `./install/install.sh --theme <wallpaper.jpg>` still works and prints no
-  override line at all — wallpaper mode must not reach the second renderer.
-- Switching to a theme and back in the picker leaves no stale file: the swatch
-  beside Gruvbox is the bright yellow `#fabd2f`, not the seed `#d79921`.
 
 The deviation worth knowing: a shipped theme pins the neutrals, the accent and
 the error colour, not the ANSI hue carriers, so the terminal's green, yellow,
@@ -182,7 +174,11 @@ VM** — this is the list you carry over.
 - [ ] **Real GPU performance** — blur at `size 6, passes 3` under load, and
       whether animations hold 60fps with a browser and an editor open
 - [ ] **Wifi and bluetooth** against real hardware — the control centre's
-      whole point, and a VM has neither
+      whole point, and a VM has neither. The tabs render; they have never
+      connected to anything.
+- [ ] **The tray, against a real client** — nothing in the VM publishes a tray
+      icon, so the DBusMenu, the tooltip and the collapse-to-3 have never been
+      exercised. Any of Signal, Slack, Mullvad or Steam is enough.
 - [ ] **Thermals and fan** under sustained load
 - [ ] **German layout** end to end — umlauts, AltGr, dead keys, and every
       binding in KEYBINDS.md actually pressed once
@@ -266,6 +262,7 @@ _Populated during Phases 3 and 4. Issue, cause, whether it needs a decision._
 | ⬜ | `--theme` from a terminal can still race the picker | The shell serialises its own runs, but `hs-theme` in a terminal and the picker are two writers to the same eight targets. A `flock` in `do_theme` would close it. Not hit yet, and not worth guessing at before it is. | no |
 | ✅ | Theme applied only sometimes, and failures looked like Catppuccin | `Theme.qml` reloaded `colors.json` on the first inotify event, which matugen fires while the file is still truncated. The parse failed and nothing re-read it, so every role fell back to the built-in defaults. Reader now debounces and retries; `install.sh` writes every target atomically. | no |
 | ✅ | Nautilus kept the old palette after a theme change | GTK reads gtk.css once per PROCESS, and D-Bus-activated GNOME apps stay resident — a new window is not a new process. `--theme` now quits resident GTK apps with no windows open, the same way it already pushed colours to running kitty instances. | no |
+| ✅ | Control centre: a tab's text appeared before the panel had expanded | `body.height` was bound to the new tab's `wanted` height, so it snapped to full size while `box.implicitHeight` was still easing — and the Flickable clips to the body, so the extra text drew below the panel edge on the bare overlay for 260ms. Worst on Audio and Display, the two tallest tabs. Now follows the animated `box.height`, which is what the launcher's list and the picker's body already did. | re-check it |
 | ⬜ | KDE-framework apps are unthemed | `KColorScheme` reads `~/.config/kdeglobals` and bypasses qt6ct entirely. No matugen target for it; `check.sh` reports it as a skip. Nothing installed today needs it. | if you install a KDE app |
 
 ### The black text, and how it was found

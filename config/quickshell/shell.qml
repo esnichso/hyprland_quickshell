@@ -8,9 +8,8 @@
 // sits at the base of that directory and quickshell registers it as the default
 // config, ignoring subdirectories entirely.
 //
-// PHASE 2e: the bar, the notch and the launcher. The remaining panels (control
-// centre, power, sysmon, wallpaper) are not built yet; their IPC calls are
-// accepted and report that they are unimplemented rather than failing silently.
+// All six panels of Phase 2e are built and have been run in the VM: bar, notch,
+// launcher, control centre, power menu, system monitor, wallpaper/theme picker.
 
 import Quickshell
 import Quickshell.Io

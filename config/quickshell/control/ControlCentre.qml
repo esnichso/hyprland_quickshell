@@ -94,7 +94,10 @@ PanelWindow {
             x: parent.width - width - Config.bar.sideMargin
             y: Config.bar.topMargin + Config.bar.islandHeight + 8
 
-            implicitHeight: header.height + body.height
+            // Driven by the tab's WANTED height, not by body.height — body
+            // follows this animation, so reading it back here would be a loop.
+            implicitHeight: header.height
+                          + Math.min(body.wanted, Config.control.maxHeight)
 
             Behavior on implicitHeight {
                 NumberAnimation { duration: Config.expandMs; easing.type: Easing.OutQuint }
@@ -180,7 +183,13 @@ PanelWindow {
                     }
                 }
 
-                height: Math.min(wanted, Config.control.maxHeight)
+                // Follows the ANIMATED box height rather than `wanted`, the same
+                // way the launcher's list and the picker's body do. Binding it to
+                // `wanted` snapped the body to the new tab's full size while the
+                // box was still easing open, and the Flickable clips to the body
+                // — so switching to a taller tab drew its text below the panel's
+                // bottom edge, on the bare overlay, for the whole 260ms.
+                height: Math.max(0, box.height - header.height)
 
                 Flickable {
                     anchors.fill: parent

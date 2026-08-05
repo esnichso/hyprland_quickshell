@@ -8,34 +8,31 @@ A Hyprland desktop for **CachyOS** on a **ThinkPad E16 Gen 3**, where the whole
 shell layer — bar, notifications, OSD, launcher, control centre, power menu — is
 a single **QuickShell** (QML) process.
 
-**Current state: Phase 2e, partial.** Running in a CachyOS VM. Working there:
-the compositor, the bar, the notch (clock, OSD, toasts, dashboard) and the
-launcher — all six modes, keyboard-driven, one overlay.
+**Current state: Phase 2e and 2f run in the VM.** All six panels have been
+opened in a CachyOS VM and all six work: the bar, the notch (clock, OSD,
+toasts, dashboard), the launcher, the control centre, the power menu, the
+system monitor and the wallpaper/theme picker. Both halves of the theming
+pipeline are proven there — including a theme carrying a `[roles]` table, which
+is what §2f was waiting on. Nothing in `FEATURES.md` is unbuilt.
 
-The **control centre is written but has never been run**: Network, Bluetooth,
-Audio and Display tabs, replacing nmtui, blueman and pavucontrol. Its
-deviations from `FEATURES.md` §3 are listed there and in `ROADMAP.md`, each
-because the Quickshell module does not expose what the feature needs.
+**What "works in the VM" does not cover**, and none of it is a code gap:
 
-The **power menu is written but has never been run** either: five actions, all
-session-ending ones through `hyprshutdown` so apps are asked to exit.
+- **The Network and Bluetooth tabs have never talked to real hardware.** A VM
+  has no wifi and no bluetooth, so the tab that exists to replace `nmtui` and
+  `blueman` has been seen rendering, not connecting. This is the control
+  centre's whole point and it is a Phase 3 item.
+- **The tray has never had a client.** Nothing in the VM publishes a tray icon,
+  so the DBusMenu, the tooltip and the collapse-to-3 behaviour are unexercised.
+- **The 4-finger scratchpad gesture** needs a touchpad the VM does not have.
+- The system monitor was opened and looked plausible; its figures have not been
+  cross-checked against `btop`, which is the only thing that would catch a
+  delta computed against the wrong counter.
 
-The **system monitor** and the **wallpaper/theme picker** are written but have
-never been run either. That is **all six panels of Phase 2e**; nothing in
-`FEATURES.md` is unbuilt.
-
-**Phase 2f is written too.** The wallpaper half of the theming pipeline is
-proven in the VM — the user has applied wallpapers and settled on
-`scheme-expressive`. The **role-override half has never run on a session**: no
-theme carrying a `[roles]` table has been applied live, only against a
-simulated matugen palette here. `ROADMAP.md` §2f lists the four things a VM run
-has to confirm.
+The panels' deviations from the spec are listed in `FEATURES.md` beside each
+feature and in `ROADMAP.md` §2e, each because a Quickshell module does not
+expose what the feature needs — none were skipped for effort.
 
 What remains is Phase 3, metal.
-
-Every panel's deviations are listed in `FEATURES.md` beside the feature and in
-`ROADMAP.md` §2e, each because a Quickshell module does not expose what the
-feature needs — none were skipped for effort.
 
 Nothing has run on metal. The dev host is Ubuntu, where Hyprland and QuickShell
 cannot be installed, so anything untested in the VM is unproven.
