@@ -594,9 +594,28 @@ its own user on its own VT before any user session exists: it cannot read
 | Keyboard | Bottom-left pill showing the layout, visible only when there is more than one. A greeter silently typing on `us` is the classic "my password stopped working" |
 | Power | Bottom-right: suspend, restart, shut down — each hidden unless `sddm.can*` says it is available |
 
-Deliberately not used: `QtQuick.Controls`. It resolves a style at load, and a
-style that is not installed for the `sddm` user is a greeter that does not
-draw. Everything here is plain `QtQuick`.
+**The syntax is deliberately conservative — Qt 5 and Qt 6 both accept all of
+it.** Which QML engine sddm launches is not something this repo can determine,
+and the cost of guessing wrong is a login screen you cannot get past. So:
+
+| Avoided | Because |
+| --- | --- |
+| `import QtQuick` with no version | Qt 6 only. This is what actually broke it: sddm reported *"Library import requires a version"*, the theme did not load at all, and the greeter fell back to breeze. `install.sh --sddm` now refuses to install a theme containing one, and `check.sh` flags it. |
+| Inline `component X: Y {}` | Needs Qt 5.15. `IconButton.qml` and `PillButton.qml` are separate files instead. |
+| `required property` in delegates | Needs Qt 5.15. The Repeaters use the implicit `index` / `model`. |
+| `Connections { function onX() }` | Needs Qt 5.15, and the older `onX:` form is deprecated in Qt 6. Signals are connected with `signal.connect()`, which both engines have always accepted, inside a `try` so a signal one version lacks cannot abort the rest of the block. |
+| `QtQuick.Controls` | Resolves a style at load, and a style not installed for the `sddm` user is a greeter that does not draw. |
+
+**Nothing fails silently.** An empty username, an empty password, and an
+exception out of `login()` each put a sentence on the card, and a 5s watchdog
+reports `no answer from sddm (user '…', session N)` if neither `loginSucceeded`
+nor `loginFailed` arrives — naming the two values being passed, because those
+are the two that can be wrong. Without the watchdog, `busy` stuck `true` on any
+silent failure and left the password field permanently disabled.
+
+That matters because of how this failed the first time: `userModel.lastUser`
+came back empty, `sddm.login("", …)` returned without a word, and the only
+visible symptom was a card with no name on it.
 
 The palette arrives through the normal pipeline —
 `config/matugen/templates/sddm-theme.conf` renders to `~/.local/state`, and

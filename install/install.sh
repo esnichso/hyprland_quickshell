@@ -447,11 +447,28 @@ do_sddm() {
     [[ -f "$gen" ]] || die "no generated palette at $gen — run ./install/install.sh --theme first"
     [[ -f "$REPO/sddm/hypersetup/Main.qml" ]] || die "no theme in the repo at sddm/hypersetup"
 
+    # Cheap, and it has already paid for itself once: an unversioned import is
+    # Qt 6 syntax, and on the engine sddm actually launched it meant the theme
+    # did not load at all. Refuse to install a greeter that cannot start.
+    if grep -qE '^import [A-Za-z.]+\s*$' "$REPO"/sddm/hypersetup/*.qml; then
+        die "unversioned import in the sddm theme — sddm's QML engine rejects it:
+     $(grep -nE '^import [A-Za-z.]+\s*$' "$REPO"/sddm/hypersetup/*.qml | head -3)"
+    fi
+
     sudo install -d -m 755 "$SDDM_THEME_DIR"
-    sudo install -m 644 "$REPO/sddm/hypersetup/Main.qml"         "$SDDM_THEME_DIR/"
+    # Every .qml, not a named list: the theme grew IconButton.qml and
+    # PillButton.qml when the inline components had to become separate files,
+    # and a named list would have installed a Main.qml referring to types that
+    # were not there — which fails exactly like a syntax error.
+    local n=0
+    for f in "$REPO"/sddm/hypersetup/*.qml; do
+        sudo install -m 644 "$f" "$SDDM_THEME_DIR/"
+        n=$((n+1))
+    done
+    (( n > 0 )) || die "no QML in $REPO/sddm/hypersetup"
     sudo install -m 644 "$REPO/sddm/hypersetup/metadata.desktop" "$SDDM_THEME_DIR/"
     sudo install -m 644 "$gen" "$SDDM_THEME_DIR/theme.conf"
-    ok "theme + palette in $SDDM_THEME_DIR"
+    ok "$n QML files + palette in $SDDM_THEME_DIR"
 
     # The wallpaper, if one has been chosen. The extension is preserved rather
     # than forced to .jpg: QML's image loader picks its decoder by extension

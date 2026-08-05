@@ -249,6 +249,8 @@ _Populated during Phases 3 and 4. Issue, cause, whether it needs a decision._
 | ✅ | Login screen was stock SDDM | Never built. `sddm/hypersetup/` + `install.sh --sddm`, FEATURES §9.1. | preview it |
 | ✅ | **Black text in the island and launcher** | `Theme` declared `onSurface` next to `surface`. QML reserves `on`+Capital for signal handlers, so the property lost its binding and kept the default — black. Renamed to `textOnSurface`; lint added. | no |
 | ✅ | Seek jumped to the end of the track | The player reports its length as the seek target until the next metadata refresh. `Media.length` now latches the longest value seen for the track. | no |
+| ✅ | Login screen would not load at all | `import QtQuick` with no version is Qt 6 syntax; sddm's engine rejected it and fell back to breeze. The theme is now Qt 5/Qt 6 portable throughout, and both `--sddm` and `check.sh` refuse an unversioned import. | preview it |
+| ✅ | Login accepted a password and did nothing | `userModel.lastUser` was empty, so it called `login("", …)`, which sddm answers with silence. The username is a prefilled but editable field now, and a watchdog names the user and session when no answer comes back. | no |
 | ✅ | `check.sh` called a healthy shell dead | `pgrep -x quickshell` — the binary is `qs`; and `qs list` lists instances, not configs. Both greps were written against output nobody had read. | no |
 
 ### The black text, and how it was found

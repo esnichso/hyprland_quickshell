@@ -513,6 +513,15 @@ for f in qml:
         elif in_glyph_map and MAP_ENTRY_EMPTY.match(code):
             bad.append((f.relative_to(repo), i, "empty glyph in map", code.strip()))
 
+        # An unversioned `import QtQuick` is Qt 6 syntax. The shell runs on
+        # quickshell's own Qt 6 engine and does not care, but the sddm theme
+        # runs on whatever engine sddm launches — where this shipped as
+        # "Library import requires a version", the theme did not load, and the
+        # greeter fell back to breeze. Only enforced for sddm/.
+        if "sddm/" in str(f.relative_to(repo)) and re.match(r"^import [A-Za-z.]+\s*$", code):
+            bad.append((f.relative_to(repo), i, "unversioned import",
+                        code.strip() + " — sddm's QML engine rejects it"))
+
         if EMPTY_GLYPH.search(code):
             bad.append((f.relative_to(repo), i, "empty glyph slot", code.strip()))
         elif EMPTY_TERNARY.search(code):

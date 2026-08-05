@@ -2,14 +2,22 @@
 //
 // SDDM runs as its own user on its own VT before any user session exists, so
 // NOTHING here can reach $HOME. This directory is COPIED to
-// /usr/share/sddm/themes/hypersetup by `install.sh --sddm` — symlinking it
-// into the repo would give the sddm user a path it cannot read.
+// /usr/share/sddm/themes/hypersetup by `install.sh --sddm` — symlinking it into
+// the repo would give the sddm user a path it cannot read.
 //
 // The palette arrives the same way every other target does: matugen renders
 // theme.conf from the same colors.json the shell uses, and --sddm copies it in
-// beside this file. SDDM exposes those keys as `config.<key>`. A key that is
-// missing comes back undefined, so every read below has a Mocha fallback and
-// the greeter still draws if the copy never happened.
+// beside this file. SDDM exposes those keys as `config.<key>`. A missing key
+// comes back undefined, so every read below has a Mocha fallback and the
+// greeter still draws if the copy never happened.
+//
+// EVERYTHING HERE STAYS INSIDE QT 5 AND QT 6 SYNTAX, deliberately.
+// `import QtQuick` with no version is Qt 6 only, and it is what broke this
+// theme in the field: sddm reported "Library import requires a version", the
+// theme did not load at all, and the greeter fell back to breeze. Which QML
+// engine sddm launches is not something this repo can determine, so the file
+// avoids the question — versioned imports, no inline components, no `required
+// property`, and signals connected in JS rather than through Connections.
 //
 // IF THIS FILE HAS AN ERROR YOU CANNOT LOG IN. The escape is a TTY:
 //   Ctrl+Alt+F2, log in, then
@@ -17,7 +25,7 @@
 // `install.sh --sddm` prints that too, because the moment you need it is the
 // moment you cannot read this comment.
 
-import QtQuick
+import QtQuick 2.15
 
 Rectangle {
     id: root
@@ -27,24 +35,29 @@ Rectangle {
     height: 800
 
     // ---- palette ----------------------------------------------------------
-    readonly property color cBg:      config.colorBackground      || "#1e1e2e"
-    readonly property color cSurface: config.colorSurface         || "#313244"
-    readonly property color cOn:      config.colorOnSurface       || "#cdd6f4"
-    readonly property color cOnDim:   config.colorOnSurfaceVariant|| "#a6adc8"
-    readonly property color cOutline: config.colorOutline         || "#6c7086"
-    readonly property color cPrimary: config.colorPrimary         || "#cba6f7"
-    readonly property color cOnPri:   config.colorOnPrimary       || "#1e1e2e"
-    readonly property color cError:   config.colorError           || "#f38ba8"
-    readonly property string uiFont:  config.fontFamily           || "Inter"
+    property color cBg:      config.colorBackground       || "#1e1e2e"
+    property color cSurface: config.colorSurface          || "#313244"
+    property color cOn:      config.colorOnSurface        || "#cdd6f4"
+    property color cOnDim:   config.colorOnSurfaceVariant || "#a6adc8"
+    property color cOutline: config.colorOutline          || "#6c7086"
+    property color cPrimary: config.colorPrimary          || "#cba6f7"
+    property color cError:   config.colorError            || "#f38ba8"
+
+    property string uiFont:  config.fontFamily || "Inter"
+
+    property color cHover:  Qt.rgba(cOutline.r, cOutline.g, cOutline.b, 0.28)
+    property color cChip:   Qt.rgba(cOutline.r, cOutline.g, cOutline.b, 0.14)
 
     color: cBg
 
     property string message: ""
     property bool busy: false
+    property string modelUser: ""
+    property string sessionName: ""
 
     // ---- background -------------------------------------------------------
     // The wallpaper, copied in by --sddm. Absent on a fresh install, and the
-    // solid background above is then the whole design rather than a hole in it.
+    // solid colour above is then the whole design rather than a hole in it.
     Image {
         id: wall
         anchors.fill: parent
@@ -54,9 +67,8 @@ Rectangle {
         visible: status === Image.Ready
     }
 
-    // Text has to stay readable over a wallpaper nobody validated for contrast,
-    // so the whole image is dimmed towards the background colour rather than
-    // trusting the picture.
+    // Text has to stay readable over a picture nobody checked for contrast, so
+    // the whole image is dimmed toward the background colour.
     Rectangle {
         anchors.fill: parent
         visible: wall.visible
@@ -75,7 +87,6 @@ Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
             text: Qt.formatTime(clock.now, "HH:mm")
             color: root.cOn
-            font.family: root.uiFont
             font.pixelSize: 72
             font.weight: Font.Light
         }
@@ -84,13 +95,12 @@ Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
             text: Qt.formatDate(clock.now, "dddd, d. MMMM")
             color: root.cOnDim
-            font.family: root.uiFont
             font.pixelSize: 16
         }
     }
 
-    // One timer, one property. Binding two Texts to `new Date()` directly would
-    // never update — a JS call is not a change notifier.
+    // One timer, one property. Binding a Text to `new Date()` would never
+    // update — a JS call is not a change notifier.
     QtObject {
         id: clock
         property var now: new Date()
@@ -121,7 +131,7 @@ Rectangle {
             width: parent.width - 48
             spacing: 14
 
-            // Avatar. A letter, not userModel's icon: the icon is a path under
+            // Avatar. A letter, not userModel's icon: that icon is a path under
             // the user's home in most distributions, which is the one place
             // this greeter cannot read.
             Rectangle {
@@ -144,11 +154,11 @@ Rectangle {
 
             // The login name — prefilled from the model, but ALWAYS editable.
             //
-            // It looks like a label and behaves like one on a machine with a
-            // single user, because the model fills it in. The point of it being
-            // a field is the case that actually happened: the model gave
-            // nothing, the card showed an empty gap, and `login("")` returned
-            // silently. Now the worst case is that you type six characters.
+            // It looks like a label and behaves like one on a machine with one
+            // user, because the model fills it in. The point of it being a field
+            // is the case that actually happened: the model gave nothing, the
+            // card showed an empty gap, and `login("")` returned silently. Now
+            // the worst case is that you type six characters.
             TextInput {
                 id: userField
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -175,8 +185,9 @@ Rectangle {
             }
 
             // Password field. A plain TextInput rather than a Controls
-            // TextField: QtQuick.Controls pulls a style, and a style that is
-            // not installed for the sddm user is a greeter that does not draw.
+            // TextField: QtQuick.Controls resolves a style at load, and a style
+            // that is not installed for the sddm user is a greeter that does
+            // not draw.
             Rectangle {
                 width: parent.width
                 height: 40
@@ -201,7 +212,7 @@ Rectangle {
                     passwordCharacter: "\u2022"
                     enabled: !root.busy
                     focus: true
-                    // Both, deliberately. `accepted` is the documented signal,
+                    // Both, deliberately. `accepted` is the documented signal
                     // and the key handlers are the belt: `busy` makes a double
                     // call harmless, whereas a signal that never fires is a
                     // login screen that does nothing when you press Enter.
@@ -227,6 +238,9 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     glyph: ""
                     size: 32
+                    fg: root.cOnDim
+                    fgHover: root.cOnDim
+                    hover: root.cHover
                     onActivated: root.tryLogin()
                 }
             }
@@ -242,8 +256,8 @@ Rectangle {
                 font.family: root.uiFont
                 font.pixelSize: 12
                 horizontalAlignment: Text.AlignHCenter
-                // Wraps rather than elides: the diagnostic messages put the
-                // values at the END, which is exactly what eliding removes.
+                // Wraps rather than elides: the diagnostics put their values at
+                // the END, which is exactly what eliding removes.
                 wrapMode: Text.Wrap
                 maximumLineCount: 2
             }
@@ -252,50 +266,68 @@ Rectangle {
 
     // ---- who is logging in ------------------------------------------------
     //
-    // `userModel.lastUser` looked like the obvious source and came back EMPTY
-    // on this machine. That failure is completely silent: the card just has no
-    // name on it, and `sddm.login("", ...)` does NOTHING — no error, no
-    // loginFailed, the greeter simply sits there. Which is exactly what it did.
+    // `userModel.lastUser` looked like the obvious source and came back EMPTY on
+    // this machine. That failure is completely silent: the card just has no name
+    // on it, and `sddm.login("", ...)` does NOTHING — no error, no loginFailed,
+    // the greeter simply sits there. Which is exactly what it did.
     //
     // So the model is read by ROLE NAME through a Repeater, the same way the
-    // session list is, and `lastUser` is only a preference layered on top. A
-    // delegate resolves `model.name` by name; reading the model directly would
-    // mean hardcoding Qt.UserRole + n, and SDDM has reordered those.
-    property string modelUser: ""
-
-    // What the model thinks; what gets sent is whatever is in the field.
-    readonly property string resolvedUser:
+    // session list is. Reading the model directly would mean hardcoding
+    // Qt.UserRole + n, and SDDM has reordered those between releases.
+    property string resolvedUser:
         (typeof userModel !== "undefined" && userModel.lastUser)
             ? String(userModel.lastUser) : modelUser
 
-    readonly property string currentUser: userField.text.trim()
+    property string currentUser: userField.text.trim()
+
+    function wantUser() {
+        if (typeof userModel === "undefined")
+            return 0;
+        return userModel.lastIndex >= 0 ? userModel.lastIndex : 0;
+    }
 
     Repeater {
         id: users
-        model: typeof userModel !== "undefined" ? userModel : 0
+        model: (typeof userModel !== "undefined") ? userModel : 0
 
-        Item {
-            required property int index
-            required property var model
-
-            readonly property int want:
-                (typeof userModel !== "undefined" && userModel.lastIndex >= 0)
-                    ? userModel.lastIndex : 0
-
-            function take() {
-                if (index !== want)
-                    return;
-                root.modelUser = model.name || "";
+        delegate: Item {
+            property int idx: index
+            property string uname:
+                (typeof model !== "undefined" && model.name) ? String(model.name) : ""
+            Component.onCompleted: {
+                if (idx === root.wantUser() && uname !== "")
+                    root.modelUser = uname;
             }
-
-            onWantChanged: take()
-            Component.onCompleted: take()
         }
     }
 
     property int sessionIndex:
         (typeof sessionModel !== "undefined" && sessionModel.lastIndex >= 0)
             ? sessionModel.lastIndex : 0
+
+    // Session names, by role name. The Repeater draws nothing — it exists so
+    // `model.name` is resolvable and so `count` is a real number.
+    Repeater {
+        id: sessions
+        model: (typeof sessionModel !== "undefined") ? sessionModel : 0
+
+        delegate: Item {
+            property int idx: index
+            property string sname:
+                (typeof model !== "undefined" && model.name) ? String(model.name) : ""
+            property bool cur: idx === root.sessionIndex
+            onCurChanged: {
+                if (cur)
+                    root.sessionName = sname;
+            }
+            Component.onCompleted: {
+                if (cur)
+                    root.sessionName = sname;
+            }
+        }
+    }
+
+    // ---- login ------------------------------------------------------------
 
     function tryLogin() {
         if (busy)
@@ -328,10 +360,9 @@ Rectangle {
     }
 
     // sddm answers every login with loginSucceeded or loginFailed. If neither
-    // arrives, the greeter would sit with a dead password field and no
+    // arrives the greeter would sit with a dead password field and no
     // explanation — which is what an empty user or a bad session index looks
-    // like from the outside. Name both in the message; they are the two things
-    // being passed.
+    // like from outside. Name both; they are the two values being passed.
     Timer {
         id: watchdog
         interval: 5000
@@ -343,27 +374,23 @@ Rectangle {
         }
     }
 
-    Connections {
-        target: sddm
+    function handleSucceeded() {
+        watchdog.stop();
+        root.message = "";
+    }
 
-        function onLoginSucceeded() {
-            watchdog.stop();
-            root.message = "";
-        }
+    function handleFailed() {
+        watchdog.stop();
+        root.busy = false;
+        root.message = "Wrong password";
+        pw.text = "";
+        pw.forceActiveFocus();
+    }
 
-        function onLoginFailed() {
-            watchdog.stop();
-            root.busy = false;
-            root.message = "Wrong password";
-            pw.text = "";
-            pw.forceActiveFocus();
-        }
-
-        // PAM's own words — "account expired", "password must be changed" —
-        // which are worth showing verbatim rather than flattening to "failed".
-        function onInformationMessage(message) {
-            root.message = message;
-        }
+    // PAM's own words — "account expired", "password must be changed" — worth
+    // showing verbatim rather than flattening to "failed".
+    function handleInfo(msg) {
+        root.message = String(msg);
     }
 
     // ---- bottom bar -------------------------------------------------------
@@ -375,27 +402,30 @@ Rectangle {
 
         // Session picker. Click to cycle rather than open a list: there are two
         // entries on this machine at most.
-        //
-        // The names come from a Repeater, NOT from sessionModel.data(). Reading
-        // a model by role INDEX means hardcoding Qt.UserRole + n, and SDDM has
-        // reordered those roles between releases — a delegate resolves them by
-        // NAME, which is the same reason the shell prefers typed models.
         PillButton {
             glyph: ""
             label: root.sessionName
+            uiFont: root.uiFont
             visible: sessions.count > 0
+            fg: root.cOnDim
+            bg: root.cChip
+            bgHover: root.cHover
             onActivated: {
                 if (sessions.count > 0)
                     root.sessionIndex = (root.sessionIndex + 1) % sessions.count;
             }
         }
 
-        // Keyboard layout. This machine is `de`, and a greeter that silently
-        // types on `us` is the classic "my password stopped working".
+        // Keyboard layout. This machine is `de`, and a greeter silently typing
+        // on `us` is the classic "my password stopped working".
         PillButton {
             glyph: ""
             label: root.layoutName
+            uiFont: root.uiFont
             visible: root.layoutCount > 1
+            fg: root.cOnDim
+            bg: root.cChip
+            bgHover: root.cHover
             onActivated: {
                 if (root.layoutCount > 1)
                     keyboard.currentLayout = (keyboard.currentLayout + 1) % root.layoutCount;
@@ -405,33 +435,14 @@ Rectangle {
 
     // Read through helpers so a missing model cannot take the whole file down
     // with it — an undefined property in a binding is a silent empty greeter.
-    readonly property int layoutCount:
+    property int layoutCount:
         (typeof keyboard !== "undefined" && keyboard.layouts) ? keyboard.layouts.length : 0
 
-    readonly property string layoutName: {
+    property string layoutName: {
         if (layoutCount === 0)
             return "";
-        const l = keyboard.layouts[keyboard.currentLayout];
+        var l = keyboard.layouts[keyboard.currentLayout];
         return l ? String(l.shortName).toUpperCase() : "";
-    }
-
-    // Session names, resolved by role name. The Repeater draws nothing — it
-    // exists so `model.name` is resolvable and so `count` is a real number.
-    property string sessionName: ""
-
-    Repeater {
-        id: sessions
-        model: typeof sessionModel !== "undefined" ? sessionModel : 0
-
-        Item {
-            required property int index
-            required property var model
-            // Runs once per entry at load, and again whenever the pill cycles,
-            // because the binding below re-evaluates on sessionIndex.
-            readonly property bool current: index === root.sessionIndex
-            onCurrentChanged: if (current) root.sessionName = model.name || ""
-            Component.onCompleted: if (current) root.sessionName = model.name || ""
-        }
     }
 
     Row {
@@ -442,100 +453,45 @@ Rectangle {
 
         IconButton {
             glyph: ""
-            visible: sddm.canSuspend
+            visible: typeof sddm !== "undefined" && sddm.canSuspend
+            fg: root.cOnDim
+            fgHover: root.cOn
+            hover: root.cHover
             onActivated: sddm.suspend()
         }
         IconButton {
             glyph: ""
-            visible: sddm.canReboot
+            visible: typeof sddm !== "undefined" && sddm.canReboot
+            fg: root.cOnDim
+            fgHover: root.cOn
+            hover: root.cHover
             onActivated: sddm.reboot()
         }
         IconButton {
             glyph: ""
-            danger: true
-            visible: sddm.canPowerOff
+            visible: typeof sddm !== "undefined" && sddm.canPowerOff
+            fg: root.cOnDim
+            fgHover: root.cError
+            hover: root.cHover
             onActivated: sddm.powerOff()
         }
     }
 
-    // ---- components -------------------------------------------------------
-
-    component IconButton: Rectangle {
-        id: btn
-        property string glyph: ""
-        property bool danger: false
-        property int size: 38
-        signal activated
-
-        width: size
-        height: size
-        radius: Math.round(size / 3)
-        color: ma.containsMouse
-               ? Qt.rgba(root.cOutline.r, root.cOutline.g, root.cOutline.b, 0.28)
-               : "transparent"
-
-        Text {
-            anchors.centerIn: parent
-            text: btn.glyph
-            // The shell's icon font. It is a hard dependency and installed
-            // system-wide, which is the only reason the greeter can use it.
-            font.family: "Symbols Nerd Font"
-            font.pixelSize: Math.round(btn.size * 0.4)
-            color: btn.danger && ma.containsMouse ? root.cError : root.cOnDim
-        }
-
-        MouseArea {
-            id: ma
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: btn.activated()
+    // Signals connected in JS, not through Connections.
+    //
+    // `Connections { function onLoginFailed() {} }` needs Qt 5.15, and the
+    // older `onLoginFailed: {}` form is deprecated in Qt 6. `signal.connect()`
+    // is the one spelling both engines have always accepted. Wrapped, because a
+    // signal this version does not have must not abort the rest of this block —
+    // the focus call below is what makes the greeter typable.
+    Component.onCompleted: {
+        pw.forceActiveFocus();
+        try {
+            sddm.loginSucceeded.connect(root.handleSucceeded);
+            sddm.loginFailed.connect(root.handleFailed);
+            sddm.informationMessage.connect(root.handleInfo);
+        } catch (e) {
+            root.message = "could not connect sddm signals: " + e;
         }
     }
-
-    component PillButton: Rectangle {
-        id: pill
-        property string glyph: ""
-        property string label: ""
-        signal activated
-
-        width: inner.width + 22
-        height: 32
-        radius: 10
-        color: pma.containsMouse
-               ? Qt.rgba(root.cOutline.r, root.cOutline.g, root.cOutline.b, 0.28)
-               : Qt.rgba(root.cOutline.r, root.cOutline.g, root.cOutline.b, 0.14)
-
-        Row {
-            id: inner
-            anchors.centerIn: parent
-            spacing: 7
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: pill.glyph
-                font.family: "Symbols Nerd Font"
-                font.pixelSize: 12
-                color: root.cOnDim
-            }
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: pill.label
-                font.family: root.uiFont
-                font.pixelSize: 12
-                color: root.cOnDim
-            }
-        }
-
-        MouseArea {
-            id: pma
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: pill.activated()
-        }
-    }
-
-    Component.onCompleted: pw.forceActiveFocus()
 }
