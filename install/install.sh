@@ -109,12 +109,26 @@ do_packages() {
 
     ok "${#list[@]} packages from the official repos"
 
-    # Interactive by default. --noconfirm answers N to every question,
-    # including "package X conflicts with Y, remove Y?" -- which turns a
-    # resolvable prompt into "Nicht auflösbare Paketkonflikte gefunden" and
-    # aborts the whole install. A conflict is a decision for you to make, not
-    # one to auto-decline. Pass --yes if you want it unattended anyway.
-    sudo pacman -S --needed $PACMAN_CONFIRM "${list[@]}"
+    # -Syu, NOT -S. This is Arch's documented way to install a package, and the
+    # reason is not tidiness: `pacman -S` resolves against the LOCAL sync
+    # database, and a mirror only keeps the current build of each package. Once
+    # the db is a few days old, pacman asks for a filename that no longer exists
+    # anywhere and every mirror answers 404 —
+    #
+    #   Fehler: Konnte Datei 'gexiv2-0.16.1-1.1-x86_64_v3.pkg.tar.zst' nicht
+    #   von at.cachyos.org übertragen : The requested URL returned error: 404
+    #
+    # which reads like a broken mirror and is not one. (That is the real message
+    # from a VM run; the mirror had 0.16.2-2.1.) Partial upgrades are unsupported
+    # on Arch regardless, so there is no version of this that installs packages
+    # without syncing first.
+    #
+    # Interactive by default. --noconfirm answers N to every question, including
+    # "package X conflicts with Y, remove Y?" -- which turns a resolvable prompt
+    # into "Nicht auflösbare Paketkonflikte gefunden" and aborts the whole
+    # install. A conflict is a decision for you to make, not one to
+    # auto-decline. Pass --yes if you want it unattended anyway.
+    sudo pacman -Syu --needed $PACMAN_CONFIRM "${list[@]}"
 
     # Anything QuickShell replaces must not be installed. Two daemons owning
     # org.freedesktop.Notifications is a coin flip at login, and a stray waybar
@@ -141,7 +155,10 @@ do_packages() {
         local helper=""
         for h in paru yay; do command -v "$h" >/dev/null && { helper="$h"; break; }; done
         if [[ -n "$helper" ]]; then
-            "$helper" -S --needed $PACMAN_CONFIRM "${aur[@]}"
+            # -Syu here too, for the same reason: an AUR package's dependencies
+            # come from the official repos and resolve against the same
+            # database.
+            "$helper" -Syu --needed $PACMAN_CONFIRM "${aur[@]}"
         else
             warn "no AUR helper (paru/yay) — install manually: ${aur[*]}"
         fi

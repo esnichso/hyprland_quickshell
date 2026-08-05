@@ -577,6 +577,15 @@ RPC before writing a package list.
 default, and is only needed for JACK pro-audio apps — none of which are
 installed.
 
+**`pacman -S` on a stale database 404s from every mirror.** `-S` resolves
+against the LOCAL sync db, and a mirror keeps only the current build of each
+package — so a db a few days old makes pacman ask for a filename that no longer
+exists, and all four mirrors answer 404. It reads like broken mirrors and is
+not: a VM run asked for `gexiv2-0.16.1-1.1` while the mirror had `0.16.2-2.1`.
+Partial upgrades are unsupported on Arch anyway, so `install.sh` uses
+**`pacman -Syu --needed <list>`**, which is Arch's documented way to install a
+package. Do not "fix" it back to `-S`.
+
 **`--noconfirm` answers N.** It declined pacman's offer to resolve a conflict and
 then reported "unresolvable conflicts", which was false. Package installation is
 interactive by default; `--yes` opts in. Auto-declining is the worst of the three
