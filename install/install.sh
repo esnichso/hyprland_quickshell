@@ -227,13 +227,14 @@ do_theme() {
     prefer="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme prefer || echo saturation)"
 
     # The two tuning knobs, both matugen CLI flags:
-    #   --type      which scheme algorithm spreads the palette. The default,
-    #               scheme-tonal-spot, is deliberately muted; scheme-vibrant
-    #               and scheme-expressive separate the hues much further.
+    #   --type      which scheme algorithm spreads the palette. Matugen's own
+    #               default, scheme-tonal-spot, is deliberately muted; this
+    #               desktop uses scheme-expressive, which moves the secondary
+    #               and tertiary hues away from the primary.
     #   --contrast  -1..1, 0 being the Material spec.
     # Built once into an array so image and hex generation cannot drift apart.
     local style contrast
-    style="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme style || echo scheme-tonal-spot)"
+    style="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme style || echo scheme-expressive)"
     contrast="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme contrast || echo 0)"
     local tune=(--type "$style" --contrast "$contrast")
 

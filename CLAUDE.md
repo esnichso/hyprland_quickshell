@@ -437,9 +437,10 @@ shapes; note its container rule must exclude the `on_` prefix, or it flags the
 correct mapping.
 
 How distinct the palette is overall is `theme.style` (matugen `--type`) and
-`theme.contrast`, both in `settings.json` — see DESIGN.md §4. The default
-`scheme-tonal-spot` is deliberately muted; that is a Material decision, not a
-bug.
+`theme.contrast`, both in `settings.json` — see DESIGN.md §4. This desktop uses
+**`scheme-expressive`**, chosen by comparing them on the real palette. Matugen's
+own default, `scheme-tonal-spot`, is deliberately muted; that is a Material
+decision rather than a bug, so do not "fix" it by changing the template.
 
 **`matugen image` aborts when it cannot ask a question.** An image with several
 candidate source colours makes it prompt — and when the shell launched it there

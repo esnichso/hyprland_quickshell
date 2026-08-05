@@ -151,7 +151,7 @@ Singleton {
                 // scheme-expressive, scheme-fidelity, scheme-fruit-salad,
                 // scheme-monochrome, scheme-neutral, scheme-rainbow,
                 // scheme-tonal-spot, scheme-vibrant, scheme-smart.
-                property string style: "scheme-tonal-spot"
+                property string style: "scheme-expressive"
 
                 // -1 to 1. 0 is the Material spec. Positive pushes foreground
                 // and background further apart.
