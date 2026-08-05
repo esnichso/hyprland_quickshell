@@ -54,10 +54,13 @@ IslandSurface {
     readonly property int volPct: Math.round(Audio.volume * 100)
 
     // Three levels, because that is how many the classic Font Awesome speaker
-    // has: no waves, one wave, two waves. Muted reuses the no-wave glyph and
-    // is told apart by colour and by the number beside it, rather than by a
-    // fourth glyph — the crossed-out speaker lives in a Nerd Fonts v3 block
-    // this repo cannot verify without a session (see Icons.qml).
+    // has: no waves, one wave, two waves. Muted reuses the no-wave glyph and is
+    // told apart by COLOUR alone — the crossed-out speaker lives in a Nerd
+    // Fonts v3 block this repo cannot verify without a session (see Icons.qml).
+    //
+    // No percentage beside it. The OSD already answers "how loud exactly" while
+    // you are changing it, which is the only moment the number matters; in the
+    // bar it was width spent on a value that is stale the rest of the time.
     readonly property string volGlyph:
           volMuted || volPct <= 33 ? Icons.volumeOff
         : volPct <= 66             ? Icons.volumeDown
@@ -198,33 +201,17 @@ IslandSurface {
         //
         // Scrolling anywhere on the island still changes it — that MouseArea is
         // declared above, before the Row, so nothing here swallows the wheel.
-        Row {
-            spacing: 5
-            visible: Audio.ready
+        Glyph {
             anchors.verticalCenter: parent.verticalCenter
+            visible: Audio.ready
+            text: root.volGlyph
+            color: root.volMuted ? Theme.error : Theme.textOnSurfaceVariant
 
-            Glyph {
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.volGlyph
-                color: root.volMuted ? Theme.error : Theme.textOnSurfaceVariant
-
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -4
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: Audio.toggleMute()
-                }
-            }
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: `${root.volPct}%`
-                color: root.volMuted ? Theme.error : Theme.textOnSurface
-                font.family: "Inter"
-                font.pixelSize: 13
-                font.weight: Font.Medium
-                font.features: ({ "tnum": 1 })
-                Behavior on color { ColorAnimation { duration: Config.fadeMs } }
+            MouseArea {
+                anchors.fill: parent
+                anchors.margins: -4
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Audio.toggleMute()
             }
         }
 

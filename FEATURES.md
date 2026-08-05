@@ -146,7 +146,7 @@ they're not in the boring state, so the island stays short.
 | Network | `Quickshell.Networking` | Wifi arc by signal strength, or ethernet glyph, or a crossed wifi when down | no |
 | Bluetooth | `Quickshell.Bluetooth` | Glyph; filled when a device is connected | yes — hidden when the adapter is off |
 | Mic | `Quickshell.Services.Pipewire` | Crossed mic | yes — only when muted |
-| Volume | `Quickshell.Services.Pipewire` | Speaker glyph at one of three levels, + `42%` | **no** — always visible |
+| Volume | `Quickshell.Services.Pipewire` | Speaker glyph at one of three levels | **no** — always visible |
 | Battery | `Quickshell.Services.UPower` | `87%` + glyph | no |
 
 Battery detail:
@@ -164,11 +164,14 @@ Volume detail:
   the control centre to answer "how loud is this".
 - Three glyph levels, because that is how many the classic Font Awesome speaker
   has: no waves (≤33%), one wave (≤66%), two waves (above). Muted reuses the
-  no-wave glyph in `error` and is told apart by colour and by the number beside
-  it — the crossed-out speaker lives in a Nerd Fonts v3 block this repo cannot
-  verify without a session.
-- The percentage is there so muted and quiet are never ambiguous, and so you can
-  see what you are unmuting back to.
+  no-wave glyph in `error` and is told apart by colour alone — the crossed-out
+  speaker lives in a Nerd Fonts v3 block this repo cannot verify without a
+  session.
+- **No percentage.** The OSD already answers "how loud exactly" while you are
+  changing it, which is the only moment the number matters. In the bar it is
+  width spent on a value that is stale the rest of the time — glyph level is
+  enough to answer "is this loud" at a glance, which is the question the bar is
+  for.
 
 **Clicks** open the relevant panel: network → control centre on the Network
 tab, bluetooth → Bluetooth tab, battery → power/profiles. The volume glyph
