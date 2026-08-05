@@ -126,6 +126,8 @@ pure static checks that need no session. Run it before every push:
   wiki snapshot documents, and flags RE2 lookaheads in rules.
 - **qml** — reals assigned to int-typed QML properties, unbalanced quotes, and
   empty glyph slots.
+- **ansi** — duplicate terminal colours, and bright colours mapped to a dark
+  container role.
 
 All three exist because the corresponding mistake shipped once. None of them
 replaces running the thing.
@@ -414,6 +416,30 @@ and the shipped code was already right. Fetched prose is a summary and can
 paraphrase wrongly — the dedicated type page is the authority.
 
 ### Theming
+
+**A terminal palette can be generated correctly and still be unreadable.** Two
+mistakes shipped together in `kitty-colors.conf`, and neither is visible in a
+diff — only in a `fastfetch` palette strip:
+
+- **Duplicates.** Six of the sixteen ANSI colours were byte-identical to three
+  others: green and magenta both `tertiary`, yellow and cyan both `secondary`,
+  red and bright red both `error`. No generator setting can separate colours
+  that are the same value.
+- **Bright colours on container roles.** In a dark scheme `X_container` is a
+  *dark* tone meant to sit behind text. The light counterpart is
+  `on_X_container`. Using the wrong one made the bright half of the palette
+  read as mud.
+
+Material 3 has only **four hue families** — primary, secondary, tertiary,
+error — and ANSI wants six, so two of them must be tonal variants unless
+`[config.custom_colors]` is used. `check.sh`'s **ansi** section now rejects both
+shapes; note its container rule must exclude the `on_` prefix, or it flags the
+correct mapping.
+
+How distinct the palette is overall is `theme.style` (matugen `--type`) and
+`theme.contrast`, both in `settings.json` — see DESIGN.md §4. The default
+`scheme-tonal-spot` is deliberately muted; that is a Material decision, not a
+bug.
 
 **`matugen image` aborts when it cannot ask a question.** An image with several
 candidate source colours makes it prompt — and when the shell launched it there

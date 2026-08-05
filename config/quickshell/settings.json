@@ -55,7 +55,9 @@
     "mode": "wallpaper",
     "manual": "catppuccin-mocha",
     "scheme": "dark",
-    "prefer": "saturation"
+    "prefer": "saturation",
+    "style": "scheme-tonal-spot",
+    "contrast": 0
   },
   "wallpaper": {
     "dir": "~/Bilder/walls",

@@ -145,6 +145,17 @@ Singleton {
                 // and without this it aborts. One of: darkness, lightness,
                 // saturation, less-saturation, value, closest-to-fallback.
                 property string prefer: "saturation"
+
+                // How far apart matugen spreads the palette. This is the knob
+                // for "the colours all look the same". One of: scheme-content,
+                // scheme-expressive, scheme-fidelity, scheme-fruit-salad,
+                // scheme-monochrome, scheme-neutral, scheme-rainbow,
+                // scheme-tonal-spot, scheme-vibrant, scheme-smart.
+                property string style: "scheme-tonal-spot"
+
+                // -1 to 1. 0 is the Material spec. Positive pushes foreground
+                // and background further apart.
+                property real contrast: 0
             }
 
             property JsonObject wallpaper: JsonObject {

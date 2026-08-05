@@ -345,6 +345,61 @@ print(f"  \033[32m ✓ \033[0m {len(qml)} QML files, no fractional int assignmen
 PYEOF
 then pass=$((pass+1)); else fail=$((fail+1)); fi
 
+# ----------------------------------------------------------- ansi palette
+
+sec "ansi"
+
+# Six of the sixteen terminal colours were once byte-identical duplicates —
+# green and magenta both `tertiary`, yellow and cyan both `secondary`. No
+# palette generator can make those distinguishable, and a diff cannot show it.
+#
+# Bright colours must also not be `*_container`: in a dark scheme that is a
+# DARK tone meant to sit behind text, which is what made half the palette
+# unreadable.
+
+if python3 - "$REPO" <<'PYEOF'
+import re, sys, pathlib
+repo = pathlib.Path(sys.argv[1])
+tpl = repo / "config/matugen/templates/kitty-colors.conf"
+if not tpl.exists():
+    print("  kitty template missing — skipped"); sys.exit(0)
+
+roles = {}
+for line in tpl.read_text().splitlines():
+    m = re.match(r"^\s*color(\d+)\s+\{\{\s*colors\.([a-z_0-9]+)\.", line)
+    if m:
+        roles[int(m.group(1))] = m.group(2)
+
+missing = [n for n in range(16) if n not in roles]
+if missing:
+    print(f"  \033[31m ✗ \033[0m kitty template defines no color{missing[0]}")
+    sys.exit(1)
+
+seen = {}
+dupes = []
+for n in range(16):
+    seen.setdefault(roles[n], []).append(n)
+for role, idx in seen.items():
+    if len(idx) > 1:
+        dupes.append(f"color{'/'.join(str(i) for i in idx)} all use {role}")
+
+# 8-15 are the bright half. `X_container` is the dark tone; `on_X_container`
+# is its LIGHT counterpart and is exactly what a bright colour should be, so
+# the on_ prefix has to be excluded or this flags the correct mapping.
+dark = [f"color{n} = {roles[n]}" for n in range(8, 16)
+        if roles[n].endswith("_container") and not roles[n].startswith("on_")]
+
+if dupes or dark:
+    for d in dupes:
+        print(f"  \033[31m ✗ \033[0m duplicate ANSI colour: {d}")
+    for d in dark:
+        print(f"  \033[31m ✗ \033[0m bright colour uses a container role (dark in a dark scheme): {d}")
+    sys.exit(1)
+
+print(f"  \033[32m ✓ \033[0m 16 ANSI colours, all distinct roles")
+PYEOF
+then pass=$((pass+1)); else fail=$((fail+1)); fi
+
 # ------------------------------------------------------------- config keys
 
 sec "config keys"

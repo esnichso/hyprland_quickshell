@@ -226,10 +226,21 @@ do_theme() {
     # lightness, saturation, less-saturation, value, closest-to-fallback.
     prefer="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme prefer || echo saturation)"
 
+    # The two tuning knobs, both matugen CLI flags:
+    #   --type      which scheme algorithm spreads the palette. The default,
+    #               scheme-tonal-spot, is deliberately muted; scheme-vibrant
+    #               and scheme-expressive separate the hues much further.
+    #   --contrast  -1..1, 0 being the Material spec.
+    # Built once into an array so image and hex generation cannot drift apart.
+    local style contrast
+    style="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme style || echo scheme-tonal-spot)"
+    contrast="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme contrast || echo 0)"
+    local tune=(--type "$style" --contrast "$contrast")
+
     local source_desc
     if [[ -n "$arg" && -f "$arg" ]]; then
         # An explicit image: switch to wallpaper mode and remember it.
-        matugen image "$arg" --mode "$scheme" --prefer "$prefer"
+        matugen image "$arg" --mode "$scheme" --prefer "$prefer" "${tune[@]}"
         echo "$arg" > "$STATE_HOME/quickshell/wallpaper"
         source_desc="wallpaper $(basename "$arg")"
         set_wallpaper "$arg"
@@ -237,7 +248,7 @@ do_theme() {
     elif [[ -n "$arg" && -f "$REPO/themes/$arg.toml" ]]; then
         local seed
         seed="$(grep -oP '^seed\s*=\s*"\K[^"]+' "$REPO/themes/$arg.toml")"
-        matugen color hex "$seed" --mode "$scheme"
+        matugen color hex "$seed" --mode "$scheme" "${tune[@]}"
         source_desc="theme $arg (seed $seed)"
 
     elif [[ "$mode" == "manual" ]]; then
@@ -245,14 +256,14 @@ do_theme() {
         name="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme manual || echo catppuccin-mocha)"
         [[ -f "$REPO/themes/$name.toml" ]] || die "no such theme: $name"
         seed="$(grep -oP '^seed\s*=\s*"\K[^"]+' "$REPO/themes/$name.toml")"
-        matugen color hex "$seed" --mode "$scheme"
+        matugen color hex "$seed" --mode "$scheme" "${tune[@]}"
         source_desc="theme $name (seed $seed)"
 
     else
         local wall
         wall="$(cat "$STATE_HOME/quickshell/wallpaper" 2>/dev/null || true)"
         if [[ -n "$wall" && -f "$wall" ]]; then
-            matugen image "$wall" --mode "$scheme" --prefer "$prefer"
+            matugen image "$wall" --mode "$scheme" --prefer "$prefer" "${tune[@]}"
             source_desc="wallpaper $(basename "$wall")"
             set_wallpaper "$wall"
         else
@@ -260,7 +271,7 @@ do_theme() {
             # leaving the shell with no colors.json at all.
             local seed
             seed="$(grep -oP '^seed\s*=\s*"\K[^"]+' "$REPO/themes/catppuccin-mocha.toml")"
-            matugen color hex "$seed" --mode "$scheme"
+            matugen color hex "$seed" --mode "$scheme" "${tune[@]}"
             source_desc="fallback seed $seed (no wallpaper set)"
         fi
     fi

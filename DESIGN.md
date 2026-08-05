@@ -132,6 +132,32 @@ useful in the VM where animations are misleading anyway.
 
 ## 4. Colour
 
+### Tuning how distinct the palette is
+
+Two knobs in `settings.json`, both passed straight to matugen by
+`install.sh --theme`. Change either and re-run `./install/install.sh --theme`.
+
+| `theme.style` | What it does |
+| --- | --- |
+| `scheme-tonal-spot` | **default.** Material's own, deliberately muted — one hue, everything else derived close to it |
+| `scheme-vibrant` | same hue family, much more chroma |
+| `scheme-expressive` | pushes the secondary and tertiary hues away from the primary |
+| `scheme-fruit-salad` | further still; hues clearly unrelated to each other |
+| `scheme-content` `scheme-fidelity` | stay close to the wallpaper's actual colours |
+| `scheme-rainbow` `scheme-neutral` `scheme-monochrome` | progressively less colour |
+
+`theme.contrast` runs `-1` to `1`, `0` being the Material spec. It separates
+foreground from background rather than hue from hue, so it is the one to reach
+for when text is hard to read rather than when colours look alike.
+
+For "a bit more distinguishable, not a lot", `scheme-expressive` with contrast
+`0` is the smallest step that changes the hues; `scheme-vibrant` keeps the same
+hues and only saturates them.
+
+The ANSI mapping itself lives in `config/matugen/templates/kitty-colors.conf`,
+one line per colour. That file is where to go to change *which role* a terminal
+colour takes, as opposed to how the palette is generated.
+
 Two modes, one pipeline, chosen at runtime. This is the switch you asked for.
 
 ```

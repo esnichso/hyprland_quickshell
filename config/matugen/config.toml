@@ -17,6 +17,34 @@
 # matugen also set it would give two writers and no single source of truth.
 reload_apps = false
 
+# --- if the ANSI colours still are not distinct enough --------------------
+#
+# Material 3 only has four hue families, so the kitty template's magenta and
+# cyan are tonal variants rather than hues of their own. For six real hues,
+# matugen can harmonise literal colours toward the wallpaper:
+#
+#   [config.custom_colors]
+#   red     = { color = "#ff5555", blend = true }
+#   green   = { color = "#50fa7b", blend = true }
+#   yellow  = { color = "#f1fa8c", blend = true }
+#   blue    = { color = "#6272ff", blend = true }
+#   magenta = { color = "#ff79c6", blend = true }
+#   cyan    = { color = "#8be9fd", blend = true }
+#
+# `blend = true` pulls each toward the wallpaper's hue, so they stay themed
+# instead of being six fixed colours. They are then referenced from a template
+# the same way a role is: {{colors.red.default.hex}}
+#
+# UNVERIFIED: the TOML shape is read from matugen's own OwnCustomColor type,
+# but the template placeholder is not something this repo can test without a
+# session. Check it landed before relying on it:
+#
+#   ./install/install.sh --theme && grep -E '^color(1|2|5) ' ~/.config/kitty/colors.conf
+#
+# If those lines are empty or still hold the template text, the placeholder is
+# wrong — matugen names custom colours differently and the mapping needs a
+# different prefix.
+
 # --- the shell -------------------------------------------------------------
 [templates.quickshell]
 input_path = "~/.config/matugen/templates/colors.json"
