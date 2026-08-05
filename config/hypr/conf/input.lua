@@ -56,3 +56,22 @@ hl.gesture({
   direction = "horizontal",
   action    = "workspace",
 })
+
+-- Four fingers up toggles the scratchpad — the same special workspace bound to
+-- SUPER+S, so the gesture and the key are two ways into one thing rather than
+-- two similar features.
+--
+-- Four rather than three so it cannot be confused with the workspace swipe
+-- above: three-finger vertical stays unbound deliberately, because a swipe that
+-- starts diagonally would otherwise be a coin flip between switching workspace
+-- and opening the scratchpad.
+--
+-- `workspace_name` is the argument the `special` action takes; the name must
+-- match the one in binds.lua, which is unqualified ("scratchpad", not
+-- "special:scratchpad") — the action already knows it is a special workspace.
+hl.gesture({
+  fingers        = 4,
+  direction      = "up",
+  action         = "special",
+  workspace_name = "scratchpad",
+})

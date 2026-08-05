@@ -9,7 +9,9 @@
 
 import QtQuick
 import Quickshell
+import Quickshell.Widgets
 import "root:/"
+import "root:/services"
 import "root:/widgets"
 
 Item {
@@ -24,6 +26,21 @@ Item {
     readonly property bool isEmoji: item && item.kind === "emoji"
     readonly property bool isInfo: item && item.kind === "info"
 
+    // A clipboard entry that is a picture. The thumbnail is decoded to a file
+    // on demand — see Clip.qml — so this is empty until that finishes and then
+    // becomes a path. Binding to `Clip.thumbs` rather than reading it once is
+    // what makes the row fill in when the decode lands.
+    readonly property var clipEntry:
+        item && item.kind === "clip" ? item.data : null
+    readonly property bool isClipImage: clipEntry !== null && clipEntry.thumbable === true
+    readonly property string thumb:
+        isClipImage && Clip.thumbs[clipEntry.id] ? Clip.thumbs[clipEntry.id] : ""
+
+    // Ask when the row is bound to an entry, not on completion: the result list
+    // reuses delegates, so a row that was showing entry A is handed entry B
+    // without ever being created again.
+    onClipEntryChanged: if (isClipImage) Clip.requestThumb(clipEntry);
+
     // A text face (¯\_(ツ)_/¯) rather than a pictograph. Ten characters wide
     // instead of one, and built from scripts an emoji font does not cover — so
     // it needs a different font AND a wider slot. Emoji.qml sets the flag; the
@@ -35,7 +52,9 @@ Item {
     // for a text face up to a cap. Fixed at 24 it drew straight over the title
     // on one side and out of the row on the other.
     readonly property real leadWidth:
-        isTextFace ? Math.min(Math.max(face.implicitWidth, 24), 116) : 24
+        isClipImage ? 52
+      : isTextFace  ? Math.min(Math.max(face.implicitWidth, 24), 116)
+      :               24
 
     // Monospace for anything that is literal text rather than a label: a
     // clipboard entry, a shell command, and a calculated value are all things
@@ -79,6 +98,29 @@ Item {
                 smooth: true
             }
 
+            // Clipboard image preview. Wider than tall, cropped to fill, so a
+            // screenshot and a portrait photo both read as a picture of
+            // something rather than as two differently-shaped boxes.
+            ClippingRectangle {
+                anchors.centerIn: parent
+                width: 52
+                height: 30
+                radius: 5
+                visible: root.thumb !== ""
+                color: Qt.alpha(Theme.outline, 0.18)
+
+                Image {
+                    anchors.fill: parent
+                    source: root.thumb
+                    fillMode: Image.PreserveAspectCrop
+                    // Decoded down at load time. A pasted 4K screenshot would
+                    // otherwise become a 4K texture to draw at 52x30.
+                    sourceSize.width: 128
+                    asynchronous: true
+                    cache: false
+                }
+            }
+
             Text {
                 id: face
                 // Left-aligned, not centred: a centred wide face overflows on
@@ -99,8 +141,11 @@ Item {
 
             Glyph {
                 anchors.centerIn: parent
+                // Still shown for an image entry whose thumbnail has not
+                // decoded yet — it is the placeholder, so the row does not
+                // start empty and then pop.
                 visible: !root.isEmoji && root.item && root.item.icon === ""
-                                       && root.item.glyph !== ""
+                                       && root.item.glyph !== "" && root.thumb === ""
                 text: root.item ? root.item.glyph : ""
                 font.pixelSize: 15
                 color: root.isInfo ? Theme.error : Theme.textOnSurfaceVariant

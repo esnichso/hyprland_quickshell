@@ -45,6 +45,66 @@ PanelWindow {
         keys.forceActiveFocus();
     }
 
+    // ---- keyboard navigation --------------------------------------------
+    //
+    // One ordered list of string keys per tab, and one index into it. A key is
+    // "<kind>:<value>" so `activate()` can dispatch without a parallel table,
+    // and so an element can test `root.navKey === "theme:" + id` inline.
+
+    property int navIndex: 0
+
+    readonly property var navKeys: {
+        const out = [];
+        if (tab === "wallpapers") {
+            const w = Wall.wallpapers;
+            for (let i = 0; i < w.length; i++)
+                out.push("w:" + w[i]);
+            return out;
+        }
+        out.push("src:wallpaper", "src:manual", "scheme:dark", "scheme:light");
+        // The theme rows are not shown while the palette follows the wallpaper,
+        // so they must not be reachable either — a focus ring on an invisible
+        // row is a cursor that has vanished.
+        if (!Wall.fromWallpaper) {
+            const t = Wall.themes;
+            for (let i = 0; i < t.length; i++)
+                out.push("theme:" + t[i].id);
+        }
+        return out;
+    }
+
+    readonly property string navKey:
+        navIndex >= 0 && navIndex < navKeys.length ? navKeys[navIndex] : ""
+
+    // Clamp rather than wrap. Wrapping from the last wallpaper back to the
+    // first reads as the selection jumping somewhere random when you are just
+    // holding an arrow key.
+    function move(delta) {
+        const n = navKeys.length;
+        if (n === 0)
+            return;
+        navIndex = Math.max(0, Math.min(n - 1, navIndex + delta));
+    }
+
+    function activate(key) {
+        if (!key)
+            return;
+        const colon = key.indexOf(":");
+        const kind = key.slice(0, colon);
+        const value = key.slice(colon + 1);
+
+        if (kind === "w")           Wall.applyWallpaper(value);
+        else if (kind === "theme")  Wall.applyTheme(value);
+        else if (kind === "scheme") Wall.setScheme(value);
+        else if (kind === "src")    value === "wallpaper" ? Wall.useWallpaperColours()
+                                                          : Wall.applyTheme(Config.theme.manual);
+    }
+
+    // Switching tab or losing rows underneath the cursor both leave navIndex
+    // pointing past the end, which would silently make Enter do nothing.
+    onTabChanged: navIndex = 0
+    onNavKeysChanged: if (navIndex >= navKeys.length) navIndex = Math.max(0, navKeys.length - 1)
+
     MouseArea {
         anchors.fill: parent
         onClicked: Panels.closeAll()
@@ -57,6 +117,52 @@ PanelWindow {
 
         Keys.onEscapePressed: event => {
             Panels.closeAll();
+            event.accepted = true;
+        }
+
+        // Arrows move, Enter applies, Tab switches tab.
+        //
+        // Navigation is an INDEX INTO A LIST OF KEYS, not per-item focus. The
+        // two tabs have nothing structurally in common — one is a Grid of
+        // images, the other a Column mixing radio rows with a segmented control
+        // — so `KeyNavigation` between real items would mean wiring every
+        // element to its four neighbours and rewiring them whenever the theme
+        // list changes length. A flat key list is rebuilt from the data instead,
+        // and each element only has to answer "is my key the current one".
+        Keys.onPressed: event => {
+            switch (event.key) {
+            case Qt.Key_Tab:
+            case Qt.Key_Backtab:
+                root.tab = root.tab === "wallpapers" ? "theme" : "wallpapers";
+                break;
+            case Qt.Key_Right:
+                root.move(1);
+                break;
+            case Qt.Key_Left:
+                root.move(-1);
+                break;
+            case Qt.Key_Down:
+                // On the grid, down is a whole row. On the theme list every
+                // arrow is one step, because it has one column.
+                root.move(root.tab === "wallpapers" ? Config.picker.columns : 1);
+                break;
+            case Qt.Key_Up:
+                root.move(root.tab === "wallpapers" ? -Config.picker.columns : -1);
+                break;
+            case Qt.Key_Home:
+                root.navIndex = 0;
+                break;
+            case Qt.Key_End:
+                root.navIndex = root.navKeys.length - 1;
+                break;
+            case Qt.Key_Return:
+            case Qt.Key_Enter:
+            case Qt.Key_Space:
+                root.activate(root.navKey);
+                break;
+            default:
+                return;   // not ours — leave event.accepted alone
+            }
             event.accepted = true;
         }
 
@@ -162,10 +268,39 @@ PanelWindow {
                                          : grid.implicitHeight + 24
 
                 Flickable {
+                    id: flick
                     anchors.fill: parent
                     contentHeight: body.wanted
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
+
+                    // Keep the keyboard cursor on screen.
+                    //
+                    // Only the wallpaper grid, deliberately. Its rows are a
+                    // fixed height computed right here, so the focused row's
+                    // position is arithmetic. The theme tab mixes 16px section
+                    // headings, 40px radio rows and a 22px segmented control,
+                    // so the same answer would mean measuring real items — and
+                    // it does not need it: that tab is short enough to fit
+                    // without scrolling unless you have a lot of themes.
+                    function reveal() {
+                        if (root.tab !== "wallpapers")
+                            return;
+                        const rowH = Math.round(grid.cell * 0.625) + grid.spacing;
+                        const row = Math.floor(root.navIndex / Config.picker.columns);
+                        const top = 12 + row * rowH;
+                        const bottom = top + rowH;
+                        if (top < contentY)
+                            contentY = top;
+                        else if (bottom > contentY + height)
+                            contentY = Math.min(bottom - height,
+                                                Math.max(0, contentHeight - height));
+                    }
+
+                    Connections {
+                        target: root
+                        function onNavIndexChanged() { flick.reveal(); }
+                    }
 
                     // ---- wallpapers ----
                     Grid {
@@ -192,6 +327,8 @@ PanelWindow {
                                 height: Math.round(grid.cell * 0.625)
 
                                 readonly property bool isCurrent: Wall.current === tile.modelData
+                                readonly property bool focused:
+                                    root.navKey === "w:" + tile.modelData
 
                                 ClippingRectangle {
                                     anchors.fill: parent
@@ -216,8 +353,15 @@ PanelWindow {
                                     anchors.fill: parent
                                     radius: 8
                                     color: "transparent"
-                                    border.width: tile.isCurrent ? 2 : (tileMa.containsMouse ? 1 : 0)
-                                    border.color: tile.isCurrent ? Theme.primary : Theme.textOnSurfaceVariant
+                                    // Applied and focused are different facts
+                                    // and both can be true, so they get
+                                    // different colours rather than competing
+                                    // for one border.
+                                    border.width: tile.isCurrent || tile.focused ? 2
+                                                : tileMa.containsMouse ? 1 : 0
+                                    border.color: tile.focused ? Theme.textOnSurface
+                                                : tile.isCurrent ? Theme.primary
+                                                : Theme.textOnSurfaceVariant
                                 }
 
                                 Text {
@@ -225,7 +369,7 @@ PanelWindow {
                                     anchors.left: parent.left
                                     anchors.right: parent.right
                                     anchors.margins: 5
-                                    visible: tileMa.containsMouse
+                                    visible: tileMa.containsMouse || tile.focused
                                     text: Wall.basename(tile.modelData)
                                     color: Theme.textOnSurface
                                     style: Text.Outline
@@ -269,6 +413,7 @@ PanelWindow {
                             label: "From wallpaper"
                             detail: "the palette follows the picture"
                             selected: Wall.fromWallpaper
+                            focused: root.navKey === "src:wallpaper"
                             onPicked: Wall.useWallpaperColours()
                         }
 
@@ -276,6 +421,7 @@ PanelWindow {
                             label: "Pick a theme"
                             detail: "wallpaper changes stop touching colour"
                             selected: !Wall.fromWallpaper
+                            focused: root.navKey === "src:manual"
                             // Selecting this with no theme chosen would leave
                             // the mode set and nothing regenerated, so it
                             // applies the remembered one.
@@ -291,11 +437,13 @@ PanelWindow {
                             Segment {
                                 text: "Dark"
                                 selected: Config.theme.scheme === "dark"
+                                focused: root.navKey === "scheme:dark"
                                 onPicked: Wall.setScheme("dark")
                             }
                             Segment {
                                 text: "Light"
                                 selected: Config.theme.scheme === "light"
+                                focused: root.navKey === "scheme:light"
                                 onPicked: Wall.setScheme("light")
                             }
                         }
@@ -314,6 +462,7 @@ PanelWindow {
                                 detail: modelData.seed
                                 swatch: modelData.seed
                                 selected: Config.theme.manual === modelData.id
+                                focused: root.navKey === "theme:" + modelData.id
                                 onPicked: Wall.applyTheme(modelData.id)
                             }
                         }
@@ -350,6 +499,7 @@ PanelWindow {
         property string label: ""
         property string detail: ""
         property bool selected: false
+        property bool focused: false
         // A theme's seed colour. Empty for the two mode rows, which have no
         // colour of their own to show.
         property string swatch: ""
@@ -367,6 +517,11 @@ PanelWindow {
             color: choice.selected ? Qt.alpha(Theme.primary, 0.14)
                  : choiceMa.containsMouse ? Theme.hoverBg
                  : "transparent"
+            // Outline rather than fill: the fill already means "applied", and
+            // one property carrying two meanings is how you end up unable to
+            // tell which row is selected and which one the keyboard is on.
+            border.width: choice.focused ? 1 : 0
+            border.color: Theme.textOnSurface
         }
 
         Rectangle {
@@ -440,12 +595,15 @@ PanelWindow {
 
         property string text: ""
         property bool selected: false
+        property bool focused: false
 
         signal picked
 
         implicitWidth: segLabel.implicitWidth + 18
         implicitHeight: 22
         radius: 7
+        border.width: seg.focused ? 1 : 0
+        border.color: Theme.textOnSurface
         color: seg.selected ? Qt.alpha(Theme.primary, 0.22)
              : segMa.containsMouse ? Theme.hoverBg
              : Qt.alpha(Theme.outline, 0.14)

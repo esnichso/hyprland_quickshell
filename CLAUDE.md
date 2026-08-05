@@ -167,6 +167,17 @@ lifts every `function` and `property` literal straight out of the `.qml` source
 and runs it in node, so it tests the **shipped text**, not a copy that can
 drift. It caught a real precedence bug (`-2^2` answering `4`).
 
+**A property whose value wraps onto the next line breaks the whole suite.**
+`tests/launcher.js` lifts `property <name>: <value>` out of the QML **line by
+line**, so a value on the following line extracts as empty and node dies with
+`SyntaxError: Unexpected token ';'` before a single assertion runs — the error
+names the property, not the extractor, so it reads like the service is broken.
+Keep values in these four files on one line. For the same reason, a property
+that calls into a Quickshell API is evaluated the moment the extracted source
+runs, so the stub in `launcher.js` must cover it (`Quickshell.cachePath` had to
+be added when `Clip.cacheDir` appeared) — an absent stub is a TypeError at
+load, not a failing check.
+
 Do not try to grow this into a QML test runner. Everything else in the shell
 needs a compositor, and `qmllint` here is a broken stub.
 

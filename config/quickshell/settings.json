@@ -5,7 +5,8 @@
     "radius": 14,
     "sideMargin": 10,
     "topMargin": 6,
-    "islandPadding": 11
+    "islandPadding": 11,
+    "trayVisible": 3
   },
   "notch": {
     "restWidth": 168,

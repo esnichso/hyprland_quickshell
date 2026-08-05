@@ -187,11 +187,28 @@ Tray icons sit at the **left end of the right island**, separated by a 1px
 divider. You run Signal, Slack, Discord and Mullvad — all four are tray-only
 when closed, so this isn't optional.
 
-- Left-click → activate
-- Right-click → the app's real menu, rendered by us from DBusMenu with our
-  palette (this is why `Quickshell.DBusMenu` matters — no GTK menu popping up
-  in a completely different theme)
-- Overflow past 5 icons collapses into a `»` chip
+- **Left-click → activate.** Unless the item reports `onlyMenu`, which is the
+  StatusNotifierItem way of saying activation is a no-op — those open the menu
+  instead, because a click that "works" and does nothing is worse than a click
+  that does the obvious thing.
+- **Middle-click → secondary activate.**
+- **Right-click → the app's own menu**, over DBusMenu. Quickshell hands out a
+  `QsMenuHandle` and renders the platform menu itself through `QsMenuAnchor`,
+  so there is nothing here to lay out. Anchored to `anchor.item` — the icon —
+  rather than `anchor.window`: PopupAnchor treats the two as mutually exclusive,
+  and anchoring to the icon is what puts the menu under the one you clicked.
+- **Hover → a tooltip** with `tooltipTitle` (falling back to `title`) and
+  `tooltipDescription`. Drawn by `Bar.qml`, **not** by the island: the island is
+  34px tall, and a tooltip below it would either be clipped by the rounded rect
+  or force the layer surface taller — and a layer surface must never change
+  size (DESIGN §3). The bar window is already tall enough for the notch and is
+  masked to the islands, so there is room below it that is drawn but not
+  clickable, which is exactly what a tooltip wants.
+- **Overflow past `bar.trayVisible` (3) collapses behind an ellipsis**, which
+  toggles to a chevron when expanded. Hidden items take zero width, not just
+  `visible: false` — an invisible item that still occupies 14px leaves the
+  island padded for icons nobody can see. The set collapses again by itself
+  when an app quits and the count drops back under the limit.
 
 ---
 
@@ -391,10 +408,27 @@ mode rather than closing it; pressing the same bind twice closes.
   (or middle/right click) removes an entry. Every `cliphist` call passes the id
   or the list line as a **positional argument** to `sh -c`, never interpolated
   into the script text.
-  **Deviation:** image entries show cliphist's `[[ binary data … ]]` descriptor
-  with a picture glyph, not a thumbnail. Rendering one means decoding each
-  visible row to a temp file — a process per row, and unverifiable without a
-  session. Listed in ROADMAP.md.
+  Image entries show a **thumbnail**. cliphist only hands out bytes on stdout
+  and an `Image` needs a URL, so the bytes are decoded to a file under
+  `Quickshell.cachePath("clip")` on demand — one `cliphist decode` at a time
+  from a queue, because a clipboard holding forty screenshots would otherwise
+  fork forty processes in the frame you press `;`. Results are cached by
+  cliphist id, failures cached as empty so a decode that cannot work is not
+  retried on every keystroke, and the whole directory is dropped on refresh
+  since a rotated-out entry never comes back. Only `png/jpg/jpeg/gif/webp/bmp`
+  are decoded — an arbitrary binary blob is work with no payoff.
+
+  The row label is rewritten too: `png · 800×600 · 41 KiB` rather than
+  `[[ binary data 41 KiB png 800x600 ]]`. Search reads **both** the label and
+  the raw marker and takes the better score, or an image would be un-findable
+  by typing either what the row says or what cliphist stored.
+
+  **Old deviation, now closed:** image entries used to show cliphist's
+  `[[ binary data … ]]` descriptor with a picture glyph and no thumbnail. The
+  stated reason was that rendering one means decoding each visible row to a
+  temp file, a process per row. That is still what it does — the fix was the
+  queue and the id cache, which make "a process per row" bounded rather than
+  unbounded.
 - **Emoji** parses `/usr/share/unicode/emoji/emoji-test.txt` from the
   `unicode-emoji` package, lazily on the first `:` and only the
   `fully-qualified` sequences, plus a small built-in kaomoji and symbol list —
@@ -515,6 +549,36 @@ hyprpaper does not do them (see §8).
   ( • ) catppuccin-mocha    (   ) gruvbox-dark
   (   ) tokyo-night         (   ) everforest
 ```
+
+**Keyboard.** Arrows move, `Enter` (or `Space`) applies, `Tab` switches tab,
+`Home`/`End` jump, `Escape` closes. On the grid, up/down move a whole row and
+left/right one tile; on the theme tab every arrow is one step, because it has
+one column.
+
+Navigation is an **index into a list of string keys**, not per-item focus. The
+two tabs have nothing structurally in common — one is a `Grid` of images, the
+other a `Column` mixing radio rows with a segmented control — so `KeyNavigation`
+between real items would mean wiring every element to its four neighbours and
+rewiring them whenever the theme list changes length. The key list is rebuilt
+from the data instead (`"w:<path>"`, `"theme:<id>"`, `"scheme:dark"`, …) and
+each element only answers "is my key the current one".
+
+Three consequences worth stating, because each is a bug that shape avoids:
+
+- Theme rows are **not reachable** while the palette follows the wallpaper,
+  because they are not drawn — a focus ring on an invisible row is a cursor
+  that has vanished.
+- The index **clamps rather than wraps**. Wrapping from the last wallpaper back
+  to the first reads as the selection jumping somewhere random when you are
+  holding an arrow key.
+- Focus is drawn as an **outline**, never as a fill: the fill already means
+  "applied", and one property carrying two meanings leaves you unable to tell
+  which row is selected from which one the keyboard is on.
+
+Scroll-into-view is implemented for the wallpaper grid only. Its rows are a
+fixed height computed on the spot, so the focused row's position is arithmetic;
+the theme tab mixes 16px headings, 40px rows and a 22px control, which would
+mean measuring real items — and it is short enough not to need it.
 
 Selecting **From wallpaper** re-runs matugen against the current wallpaper
 immediately. Selecting a named theme stops wallpaper changes from touching

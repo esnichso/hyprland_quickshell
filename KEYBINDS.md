@@ -188,6 +188,48 @@ carry an explicit line in the metal checklist (ROADMAP §Phase 3).
 
 ---
 
+## Wallpaper / theme picker — `SUPER` + `ALT` + `W`
+
+| Key | Does |
+| --- | --- |
+| `←` `→` | Previous / next item |
+| `↑` `↓` | A whole row on the wallpaper grid; one step on the theme tab |
+| `Enter` / `Space` | Apply the focused item |
+| `Tab` | Switch between Wallpapers and Theme |
+| `Home` / `End` | First / last |
+| `Escape` | Close |
+
+The focus ring is an **outline**; the filled row is the one currently applied.
+They are different facts and both can be true at once.
+
+---
+
+## Touchpad gestures
+
+Declared with `hl.gesture()` in `conf/input.lua`, not with the old
+`gestures.workspace_swipe` booleans — those were **removed upstream** and are a
+startup error now, not an ignored key.
+
+| Gesture | Does |
+| --- | --- |
+| 3 fingers, horizontal | Switch workspace, 1:1 with the swipe |
+| 4 fingers, up | Toggle the scratchpad — the same special workspace as `SUPER` + `S` |
+
+Two deliberate absences:
+
+- **Three-finger vertical is unbound.** A swipe that starts diagonally would
+  otherwise be a coin flip between switching workspace and opening the
+  scratchpad, and the loser is whichever one you did not mean.
+- **Nothing calls into the shell.** A gesture bound to a lua lambda running
+  `qs ipc call …` would silently do nothing whenever quickshell is restarting.
+  Compositor actions keep working regardless.
+
+The swipe's feel — how far, when it commits, when it snaps back — is the
+`workspace_swipe_*` block in `conf/input.lua`. Those keys still exist; only the
+on/off switch was replaced.
+
+---
+
 ## Terminal — kitty
 
 | Keys | Action |

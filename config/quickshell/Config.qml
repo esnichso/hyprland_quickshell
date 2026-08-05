@@ -75,6 +75,8 @@ Singleton {
                 property int sideMargin: 10
                 property int topMargin: 6
                 property int islandPadding: 11
+                // Tray icons shown at rest; the rest sit behind an ellipsis.
+                property int trayVisible: 3
             }
 
             property JsonObject notch: JsonObject {

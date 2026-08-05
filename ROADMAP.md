@@ -256,6 +256,12 @@ _Populated during Phases 3 and 4. Issue, cause, whether it needs a decision._
 | ✅ | Bar never showed the audio level | The volume glyph was conditional on *muted*, so a working system said nothing about it. Now always visible: three speaker levels, click to mute. No percentage — the OSD covers that while you are changing it. | no |
 | ✅ | fastfetch ran on stock defaults | There was no `config/fastfetch/` at all. Added one; it draws from the ANSI palette the kitty template already generates, so it themes itself with no new matugen target. | no |
 | ✅ | GTK and Qt theming had no check | `check.sh` gained a `desktop theming` section: the GTK stylesheets are parsed by GTK's own provider (one process per toolkit version), the named GTK/icon/cursor themes are resolved on the real search path, and the qt6ct scheme is checked for its 3×21 colours. Found a missing dependency — `gnome-themes-extra`, which provides the `Adwaita-dark` the settings ask for by name. | no |
+| ✅ | Tray right-click did nothing | The menu was left as Phase 2 work. Now opens the app's own DBusMenu through `QsMenuAnchor`, anchored to the icon. Left-click falls through to the menu for `onlyMenu` items. | no |
+| ✅ | Two grey tray icons were indistinguishable | No tooltip. Now drawn by `Bar.qml` below the island — not by the island, which would have to grow, and a layer surface must never change size. | no |
+| ✅ | Tray grew the island without limit | Collapsed to `bar.trayVisible` (3) behind an ellipsis; hidden items take zero width, and it re-collapses when an app quits. | no |
+| ✅ | Clipboard images were `[[ binary data … ]]` | Now a thumbnail plus `png · 800×600 · 41 KiB`. Decoded to `Quickshell.cachePath("clip")` on demand, one process at a time from a queue, cached by id. Search reads the label and the raw marker. | no |
+| ✅ | Wallpaper picker was mouse-only | Arrows/Enter/Tab/Home/End, over a flat key list rather than per-item focus — the two tabs have no common structure. Scroll-into-view on the grid. | no |
+| ✅ | No scratchpad gesture | 4-finger up toggles the special workspace already on `SUPER+S`. Three-finger vertical stays unbound so a diagonal swipe cannot be a coin flip. | no |
 | ⬜ | KDE-framework apps are unthemed | `KColorScheme` reads `~/.config/kdeglobals` and bypasses qt6ct entirely. No matugen target for it; `check.sh` reports it as a skip. Nothing installed today needs it. | if you install a KDE app |
 
 ### The black text, and how it was found

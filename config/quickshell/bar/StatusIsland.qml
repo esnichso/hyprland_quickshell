@@ -26,6 +26,50 @@ IslandSurface {
         NumberAnimation { duration: Config.expandMs; easing.type: Easing.OutQuint }
     }
 
+    // ---- tray ---------------------------------------------------------------
+
+    property bool trayExpanded: false
+
+    // The hovered item itself, not its text: Bar.qml draws the tooltip and
+    // needs the title AND the description, and passing the object keeps the
+    // formatting decision at the drawing end.
+    property var trayHovered: null
+
+    // Collapse again whenever the set changes. An app quitting while the tray
+    // is expanded would otherwise leave the island wide with nothing in it.
+    Connections {
+        target: SystemTray.items
+        function onValuesChanged() {
+            if (SystemTray.items.values.length <= Config.bar.trayVisible)
+                root.trayExpanded = false;
+        }
+    }
+
+    // The app's OWN menu, served over DBusMenu. Quickshell hands us a
+    // QsMenuHandle and renders the platform menu itself — there is nothing here
+    // to lay out, which is why this is four lines and not a popup component.
+    //
+    // anchor.item, not anchor.window: PopupAnchor treats the two as mutually
+    // exclusive (setting one clears the other), and an item already resolves
+    // the window it lives in. Anchoring to the icon is also what puts the menu
+    // under the icon you actually clicked rather than under the island.
+    QsMenuAnchor {
+        id: trayMenu
+        anchor.edges: Edges.Bottom
+        anchor.gravity: Edges.Bottom
+    }
+
+    function openTrayMenu(item, entry) {
+        // hasMenu is the documented guard. Opening an absent menu is not an
+        // error that surfaces anywhere — it is a right click that does nothing,
+        // which is indistinguishable from the bug we just fixed.
+        if (!entry || !entry.hasMenu)
+            return;
+        trayMenu.menu = entry.menu;
+        trayMenu.anchor.item = item;
+        trayMenu.open();
+    }
+
     // ---- data -------------------------------------------------------------
 
     readonly property var battery: UPower.displayDevice
@@ -83,6 +127,11 @@ IslandSurface {
         spacing: 9
 
         // --- system tray ---
+        //
+        // Collapsed to the first `Config.bar.trayVisible` icons, with the rest
+        // behind an ellipsis. Steam, Discord and Nextcloud together are five
+        // icons the bar has no business showing at rest, and the island's width
+        // animates, so expanding is not a jump.
         Row {
             spacing: 8
             visible: Config.modules.tray && SystemTray.items.values.length > 0
@@ -92,14 +141,23 @@ IslandSurface {
                 model: SystemTray.items
 
                 Item {
+                    id: trayEntry
                     required property var modelData
-                    width: 14
+                    required property int index
+
+                    readonly property bool shown:
+                        root.trayExpanded || index < Config.bar.trayVisible
+
+                    // Width, not just visible: a hidden item that still takes
+                    // 14px leaves the island padded for icons nobody can see.
+                    visible: shown
+                    width: shown ? 14 : 0
                     height: 14
                     anchors.verticalCenter: parent.verticalCenter
 
                     Image {
                         anchors.fill: parent
-                        source: modelData.icon
+                        source: trayEntry.modelData.icon
                         sourceSize: Qt.size(14, 14)
                         smooth: true
                     }
@@ -107,14 +165,52 @@ IslandSurface {
                     MouseArea {
                         anchors.fill: parent
                         anchors.margins: -5
-                        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+                        hoverEnabled: true
+                        acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
                         cursorShape: Qt.PointingHandCursor
-                        // Right-click needs a DBusMenu popup, which is Phase 2.
+
+                        // The tooltip is drawn by Bar.qml, not here: this island
+                        // is 34px tall and a tooltip under it would either be
+                        // clipped or force the surface taller, and a layer
+                        // surface must never change size. The bar window is
+                        // already tall enough for the notch, transparent, and
+                        // masked to the islands — so there is room below with
+                        // nothing to click through.
+                        onEntered: root.trayHovered = trayEntry.modelData
+                        onExited: if (root.trayHovered === trayEntry.modelData)
+                                      root.trayHovered = null
+
                         onClicked: mouse => {
-                            if (mouse.button === Qt.LeftButton) modelData.activate();
-                            else modelData.secondaryActivate();
+                            if (mouse.button === Qt.RightButton) {
+                                root.openTrayMenu(trayEntry, trayEntry.modelData);
+                            } else if (mouse.button === Qt.LeftButton) {
+                                // onlyMenu means activation is documented to do
+                                // nothing, so a left click that "works" would
+                                // just be a click that silently does nothing.
+                                if (trayEntry.modelData.onlyMenu)
+                                    root.openTrayMenu(trayEntry, trayEntry.modelData);
+                                else
+                                    trayEntry.modelData.activate();
+                            } else {
+                                trayEntry.modelData.secondaryActivate();
+                            }
                         }
                     }
+                }
+            }
+
+            // --- expand / collapse ---
+            Glyph {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: SystemTray.items.values.length > Config.bar.trayVisible
+                text: root.trayExpanded ? Icons.chevronRight : Icons.ellipsis
+                color: Theme.textOnSurfaceVariant
+
+                MouseArea {
+                    anchors.fill: parent
+                    anchors.margins: -4
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.trayExpanded = !root.trayExpanded
                 }
             }
         }

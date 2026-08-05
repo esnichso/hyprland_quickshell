@@ -62,6 +62,8 @@ Singleton {
         "clock": "",
 
         // generic
+        "ellipsis": "",
+        "chevronRight": "",
         "close": "",
         "refresh": "",
         "trash": "",
@@ -95,6 +97,8 @@ Singleton {
     readonly property string reboot: glyphs.reboot
     readonly property string power: glyphs.power
     readonly property string clock: glyphs.clock
+    readonly property string ellipsis: glyphs.ellipsis
+    readonly property string chevronRight: glyphs.chevronRight
     readonly property string close: glyphs.close
     readonly property string refresh: glyphs.refresh
     readonly property string trash: glyphs.trash

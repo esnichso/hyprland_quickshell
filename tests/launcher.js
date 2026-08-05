@@ -230,7 +230,13 @@ Emoji.parse(EMOJI_FIXTURE);
 // ---------------------------------------------------------------- Clip
 const removed = [];
 const Clip = load("Clip", { Fuzzy,
-    Quickshell: { execDetached: a => removed.push(a) } });
+    Quickshell: {
+        execDetached: a => removed.push(a),
+        // Clip.cacheDir is a property, so it is evaluated the moment the
+        // extracted source runs — an absent stub is a TypeError at load, not a
+        // failing assertion.
+        cachePath: p => "/tmp/hypersetup-test-cache/" + p,
+    } });
 
 Clip.parse([
     "3\thello world",
@@ -247,7 +253,40 @@ check("clip: the raw line is kept for `cliphist delete`",
     Clip.entries[1].line, "2\t[[ binary data 41 KiB png 800x600 ]]");
 check("clip: binary entries are flagged", Clip.entries[1].image, true);
 check("clip: text entries are not", Clip.entries[0].image, false);
+// The prettified label for a binary entry. The row shows this instead of
+// cliphist's own marker, which is cliphist talking to itself.
+check("clip: image entries get a readable label",
+    Clip.entries[1].preview, "png · 800×600 · 41 KiB");
+check("clip: the marker is still kept as `raw`",
+    Clip.entries[1].raw, "[[ binary data 41 KiB png 800x600 ]]");
+check("clip: format is lowercased out of the marker",
+    Clip.entries[1].format, "png");
+check("clip: a png is worth decoding to a thumbnail",
+    Clip.entries[1].thumbable, true);
+check("clip: text entries are never thumbable",
+    Clip.entries[0].thumbable, false);
+
+// A binary entry cliphist words differently must still register as binary —
+// it just does not get a label or a thumbnail.
+Clip.parse("9\t[[ binary data something we do not parse ]]");
+check("clip: an unparsed binary marker is still binary", Clip.entries[0].image, true);
+check("clip: ...but is not thumbable", Clip.entries[0].thumbable, false);
+check("clip: ...and keeps the marker as its label",
+    Clip.entries[0].preview, "[[ binary data something we do not parse ]]");
+
+Clip.parse([
+    "3\thello world",
+    "2\t[[ binary data 41 KiB png 800x600 ]]",
+    "1\tsome\ttext\twith\ttabs",
+    ""
+].join("\n"));
+
 check("clip: search filters", Clip.search("hello").length, 1);
+// Findable by what the row SAYS and by what cliphist stored — both, because
+// `preview` and `raw` no longer contain the same words.
+check("clip: an image is findable by its shown label", Clip.search("png").length, 1);
+check("clip: an image is findable by the raw marker text",
+    Clip.search("binary").length, 1);
 check("clip: search rejects nonsense", Clip.search("zzqq").length, 0);
 check("clip: empty search returns everything", Clip.search("").length, 3);
 

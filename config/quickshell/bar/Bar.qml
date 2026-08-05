@@ -130,4 +130,69 @@ PanelWindow {
         anchors.top: parent.top
         anchors.topMargin: Config.bar.topMargin
     }
+
+    // Tray tooltip.
+    //
+    // Drawn HERE rather than inside StatusIsland, for the reason the comment on
+    // implicitHeight above gives: this window is already tall enough for the
+    // notch, so a tooltip below the island needs no new surface and no resize.
+    // Inside the island it would be clipped by the rounded rect or would push
+    // the surface taller, and a layer surface that changes size gets animated
+    // by the compositor on top of whatever the shell is animating.
+    //
+    // It is outside the input mask, so it is drawn but not clickable — which is
+    // exactly what a tooltip should be. Nothing here can swallow a click meant
+    // for the window underneath.
+    Rectangle {
+        id: trayTip
+
+        readonly property var entry: status.trayHovered
+        readonly property string head:
+            entry ? (entry.tooltipTitle && entry.tooltipTitle !== ""
+                        ? entry.tooltipTitle : entry.title) : ""
+        readonly property string body:
+            entry && entry.tooltipDescription ? entry.tooltipDescription : ""
+
+        anchors.right: status.right
+        anchors.top: status.bottom
+        anchors.topMargin: 8
+
+        implicitWidth: Math.min(tipCol.implicitWidth + 20, 360)
+        implicitHeight: tipCol.implicitHeight + 14
+        radius: 10
+        color: Theme.surfaceContainerHigh
+        border.width: 1
+        border.color: Qt.alpha(Theme.outline, 0.35)
+
+        // Fade only. Nothing moves: a tooltip that slides draws the eye to the
+        // motion rather than to the text it came to show.
+        visible: opacity > 0
+        opacity: head !== "" ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Config.fadeMs } }
+
+        Column {
+            id: tipCol
+            anchors.centerIn: parent
+            spacing: 2
+
+            Text {
+                text: trayTip.head
+                color: Theme.textOnSurface
+                font.family: "Inter"; font.pixelSize: 12; font.weight: Font.Medium
+                elide: Text.ElideRight
+                width: Math.min(implicitWidth, 340)
+            }
+
+            Text {
+                visible: trayTip.body !== ""
+                text: trayTip.body
+                color: Theme.textOnSurfaceVariant
+                font.family: "Inter"; font.pixelSize: 11
+                wrapMode: Text.WordWrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+                width: Math.min(implicitWidth, 340)
+            }
+        }
+    }
 }
