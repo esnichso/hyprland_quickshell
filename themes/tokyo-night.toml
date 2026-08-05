@@ -1,3 +1,32 @@
+# Tokyo Night, the "night" variant. See catppuccin-mocha.toml for what [roles]
+# does and why only the neutrals, the accent and the error colour are pinned.
 name = "Tokyo Night"
 seed = "#7aa2f7"
 scheme = "dark"
+
+[roles]
+# Palette names in the comments are folke/tokyonight.nvim's own.
+background                = "#1a1b26"   # bg
+on_background             = "#c0caf5"   # fg
+
+surface                   = "#1a1b26"   # bg
+surface_dim               = "#16161e"   # bg_dark
+surface_bright            = "#414868"   # terminal black
+surface_container_lowest  = "#16161e"   # bg_dark
+surface_container_low     = "#1f2335"   # bg_float
+surface_container         = "#292e42"   # bg_highlight
+surface_container_high    = "#3b4261"   # bg_visual
+surface_container_highest = "#414868"   # terminal black
+
+on_surface                = "#c0caf5"   # fg
+on_surface_variant        = "#a9b1d6"   # fg_dark
+outline                   = "#565f89"   # comment
+outline_variant           = "#3b4261"   # bg_visual
+shadow                    = "#16161e"   # bg_dark
+inverse_surface           = "#c0caf5"   # fg
+
+primary                   = "#7aa2f7"   # blue
+on_primary                = "#1a1b26"   # bg
+
+error                     = "#f7768e"   # red
+on_error                  = "#1a1b26"   # bg

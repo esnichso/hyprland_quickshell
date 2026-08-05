@@ -150,16 +150,24 @@ Singleton {
         stderr: StdioCollector {}
     }
 
-    // Emits "<id>\t<name>\t<seed>" per theme. Reading the seed here is what
-    // lets each row preview its own colour instead of just its name.
+    // Emits "<id>\t<name>\t<swatch>" per theme, so each row previews its own
+    // colour instead of just its name.
+    //
+    // The swatch is the theme's `primary` role override when it has one, and
+    // its `seed` otherwise. Those are not always the same colour: gruvbox
+    // seeds from the dim yellow because that is the hue the palette is built
+    // around, but its accent is the bright one. Showing the seed there would
+    // preview a colour the desktop never actually uses.
     Process {
         id: themeProc
         command: ["sh", "-c",
             'repo=$(dirname "$(dirname "$(readlink -f "$HOME/.config/quickshell")")"); ' +
             'for f in "$repo"/themes/*.toml; do [ -f "$f" ] || continue; ' +
             'b=$(basename "$f" .toml); ' +
-            'n=$(sed -n \'s/^name *= *"\\(.*\\)"/\\1/p\' "$f" | head -1); ' +
-            's=$(sed -n \'s/^seed *= *"\\(.*\\)"/\\1/p\' "$f" | head -1); ' +
+            'n=$(sed -n \'s/^name *= *"\\([^"]*\\)".*/\\1/p\' "$f" | head -1); ' +
+            's=$(sed -n \'s/^seed *= *"\\([^"]*\\)".*/\\1/p\' "$f" | head -1); ' +
+            'p=$(sed -n \'s/^primary *= *"\\([^"]*\\)".*/\\1/p\' "$f" | head -1); ' +
+            '[ -n "$p" ] && s="$p"; ' +
             'printf "%s\\t%s\\t%s\\n" "$b" "$n" "$s"; done']
         stdout: StdioCollector {
             id: themeOut

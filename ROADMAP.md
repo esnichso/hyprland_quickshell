@@ -129,10 +129,32 @@ what the feature needs — not because it was skipped:
 | hyprsunset state readback | `hyprctl hyprsunset profile` prints the active profile, but its output format is undocumented. The parser is best-effort and is not allowed to move the UI when it fails — if it turns out to work on metal, delete the local copy and trust it. |
 
 ### 2f — Theming pipeline
+
+**Written, and the wallpaper half is proven in the VM.** The role-override half
+has never run: no theme with a `[roles]` table has been applied on a live
+session, only against a simulated matugen palette on the dev host.
+
 - matugen config + templates for all seven targets
 - `themes/*.toml` with seed + role overrides
 - Mode switch wired to the picker
 - Contrast validation in `check.sh`
+
+**What a VM run has to confirm**, since none of it can be checked here:
+
+- `./install/install.sh --theme catppuccin-mocha` prints
+  `20 role overrides, 6 targets re-rendered` and the desktop turns actual
+  Mocha — `#1e1e2e` surfaces, not a purple-tinted near-black.
+- `grep background ~/.config/kitty/colors.conf` is `#1e1e2e`, and a fastfetch
+  palette strip still has sixteen distinguishable colours. The re-render
+  touches every ANSI line, so this is where a broken renderer would show.
+- `./install/install.sh --theme <wallpaper.jpg>` still works and prints no
+  override line at all — wallpaper mode must not reach the second renderer.
+- Switching to a theme and back in the picker leaves no stale file: the swatch
+  beside Gruvbox is the bright yellow `#fabd2f`, not the seed `#d79921`.
+
+The deviation worth knowing: a shipped theme pins the neutrals, the accent and
+the error colour, not the ANSI hue carriers, so the terminal's green, yellow,
+cyan and magenta stay matugen's derivations. DESIGN.md §4 says why.
 
 ---
 

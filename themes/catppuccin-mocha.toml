@@ -1,12 +1,52 @@
 # A manual theme: colour comes from here instead of from the wallpaper.
 #
-# `seed` is fed to `matugen color hex`, which generates the full Material 3
-# role set around it. That gives a coherent 40-role palette from one value.
+# `seed` is fed to `matugen color hex`, which generates the full 35-role
+# Material 3 set around it. `[roles]` is then merged on top by
+# `install.sh --theme`, and every target is re-rendered from the result.
 #
-# PHASE 1 LIMITATION: only `seed` is used. DESIGN.md §4 describes a [roles]
-# table merged on top for exact fidelity on the roles you actually notice
-# (base, surface, text). That merge lands in Phase 2f — until then a manual
-# theme is "Catppuccin-flavoured", not literally Catppuccin.
+# WHAT TO OVERRIDE, AND WHAT NOT TO. The neutrals are what makes a theme
+# recognisable — you know Mocha by #1e1e2e, not by its tertiary container. So
+# the surfaces, the text, the outlines, the accent and the error colour are
+# pinned to the palette's real values, and the tonal variants nobody can name
+# are left to matugen. Writing all 35 by hand per theme is what made v1's
+# theming a chore, and the ones left out are the ones you cannot see.
+#
+# One consequence worth knowing: the terminal's green, yellow, cyan and magenta
+# come from `tertiary` and `secondary`, which are NOT overridden here, so they
+# stay matugen's derivations from the mauve seed rather than Catppuccin's own
+# green and yellow. That is deliberate — Material 3 has four hue families and
+# ANSI wants six, so pinning two of them would leave the other four mismatched,
+# which reads worse than a coherent derived set. See DESIGN.md §4.
+#
+# Role names may be snake_case or camelCase; both resolve to the same role.
+# An unknown name is a hard error, not a silent skip.
 name = "Catppuccin Mocha"
 seed = "#cba6f7"
 scheme = "dark"
+
+[roles]
+# Palette names in the comments are Catppuccin's own, flavour Mocha.
+background                = "#1e1e2e"   # base
+on_background             = "#cdd6f4"   # text
+
+surface                   = "#1e1e2e"   # base
+surface_dim               = "#11111b"   # crust
+surface_bright            = "#45475a"   # surface1
+surface_container_lowest  = "#11111b"   # crust
+surface_container_low     = "#181825"   # mantle
+surface_container         = "#313244"   # surface0
+surface_container_high    = "#45475a"   # surface1
+surface_container_highest = "#585b70"   # surface2
+
+on_surface                = "#cdd6f4"   # text
+on_surface_variant        = "#a6adc8"   # subtext0
+outline                   = "#6c7086"   # overlay0
+outline_variant           = "#585b70"   # surface2
+shadow                    = "#11111b"   # crust
+inverse_surface           = "#cdd6f4"   # text
+
+primary                   = "#cba6f7"   # mauve — the accent, and ANSI blue
+on_primary                = "#1e1e2e"   # base
+
+error                     = "#f38ba8"   # red
+on_error                  = "#1e1e2e"   # base

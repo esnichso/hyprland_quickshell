@@ -22,8 +22,16 @@ session-ending ones through `hyprshutdown` so apps are asked to exit.
 
 The **system monitor** and the **wallpaper/theme picker** are written but have
 never been run either. That is **all six panels of Phase 2e**; nothing in
-`FEATURES.md` is unbuilt. What remains is 2f (the theming pipeline's role
-overrides) and Phase 3, metal.
+`FEATURES.md` is unbuilt.
+
+**Phase 2f is written too.** The wallpaper half of the theming pipeline is
+proven in the VM — the user has applied wallpapers and settled on
+`scheme-expressive`. The **role-override half has never run on a session**: no
+theme carrying a `[roles]` table has been applied live, only against a
+simulated matugen palette here. `ROADMAP.md` §2f lists the four things a VM run
+has to confirm.
+
+What remains is Phase 3, metal.
 
 Every panel's deviations are listed in `FEATURES.md` beside the feature and in
 `ROADMAP.md` §2e, each because a Quickshell module does not expose what the
@@ -119,7 +127,7 @@ parse locally. Lua parses via `luaparser` in a venv (`luac` is not installed).
 at a Qt5 binary that does not exist, and it fails identically on valid and
 invalid input, so its verdict means nothing.
 
-`./install/check.sh` runs from the repo anywhere, and two of its sections are
+`./install/check.sh` runs from the repo anywhere, and four of its sections are
 pure static checks that need no session. Run it before every push:
 
 - **config keys** — diffs every key in `config/hypr` against the 518 keys the
@@ -128,9 +136,13 @@ pure static checks that need no session. Run it before every push:
   empty glyph slots.
 - **ansi** — duplicate terminal colours, and bright colours mapped to a dark
   container role.
+- **templates** — the contract that lets `install.sh` re-render matugen's
+  templates itself: placeholder forms it implements, roles that exist in
+  `colors.json`, `[roles]` keys that resolve, and each theme's own contrast.
 
-All three exist because the corresponding mistake shipped once. None of them
-replaces running the thing.
+The first three exist because the corresponding mistake shipped once; the
+fourth exists because the renderer it guards cannot be exercised here. None of
+them replaces running the thing.
 
 One more thing runs off a session:
 
@@ -210,6 +222,16 @@ produce the same Material 3 role set, which then renders through the same
 templates to all seven targets. When adding a themed target, add a matugen
 template — never a second mechanism. `theme.mode` in `settings.json` selects
 which source feeds it.
+
+The one wrinkle: matugen offers no hook to change a role before it renders, so
+a theme's `[roles]` table can only be merged *after*. `install.sh` lets matugen
+render once, merges the overrides into `colors.json`, and re-renders the other
+six targets itself — reusing the same template files, so no target's role
+mapping is duplicated. A theme without `[roles]` never reaches that path. Its
+renderer implements exactly two placeholder forms; `check.sh`'s **templates**
+section fails the build if a template ever uses a third. If you add a
+placeholder form to a template, teach `apply_roles` in `install.sh` about it in
+the same commit, or the check will tell you.
 
 ### What deliberately stays outside QuickShell
 

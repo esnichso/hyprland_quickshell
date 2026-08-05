@@ -238,6 +238,11 @@ do_theme() {
     contrast="$(json_get "$CONFIG_HOME/quickshell/settings.json" theme contrast || echo 0)"
     local tune=(--type "$style" --contrast "$contrast")
 
+    # Set by every branch that generated from a THEME rather than an image.
+    # Only a theme can carry [roles], so this is also the flag for whether the
+    # override pass runs at all.
+    local theme_toml=""
+
     local source_desc
     if [[ -n "$arg" && -f "$arg" ]]; then
         # An explicit image: switch to wallpaper mode and remember it.
@@ -251,6 +256,7 @@ do_theme() {
         seed="$(grep -oP '^seed\s*=\s*"\K[^"]+' "$REPO/themes/$arg.toml")"
         matugen color hex "$seed" --mode "$scheme" "${tune[@]}"
         source_desc="theme $arg (seed $seed)"
+        theme_toml="$REPO/themes/$arg.toml"
 
     elif [[ "$mode" == "manual" ]]; then
         local name seed
@@ -259,6 +265,7 @@ do_theme() {
         seed="$(grep -oP '^seed\s*=\s*"\K[^"]+' "$REPO/themes/$name.toml")"
         matugen color hex "$seed" --mode "$scheme" "${tune[@]}"
         source_desc="theme $name (seed $seed)"
+        theme_toml="$REPO/themes/$name.toml"
 
     else
         local wall
@@ -274,10 +281,15 @@ do_theme() {
             seed="$(grep -oP '^seed\s*=\s*"\K[^"]+' "$REPO/themes/catppuccin-mocha.toml")"
             matugen color hex "$seed" --mode "$scheme" "${tune[@]}"
             source_desc="fallback seed $seed (no wallpaper set)"
+            theme_toml="$REPO/themes/catppuccin-mocha.toml"
         fi
     fi
 
     ok "$source_desc, $scheme"
+
+    if [[ -n "$theme_toml" ]]; then
+        apply_roles "$theme_toml"
+    fi
 
     # Push the new palette to every running kitty. Without this, open terminals
     # keep the old colours until they are restarted.
@@ -289,6 +301,112 @@ do_theme() {
 
     # Hyprland re-reads conf/colors.lua on reload; border gradients update live.
     command -v hyprctl >/dev/null && hyprctl reload >/dev/null 2>&1 && ok "hyprctl reload"
+}
+
+# Merge a theme's [roles] table over the palette matugen just generated, then
+# re-render every other target from the merged map (DESIGN.md §4, "Mode
+# manual").
+#
+# WHY THERE IS A SECOND RENDER AT ALL. matugen derives all 35 roles from one
+# seed, which gives a coherent palette but not literally Catppuccin — its base
+# is a purple-tinted near-black, not #1e1e2e. matugen has no hook to override a
+# role before it renders, so the only place to intervene is after. It renders
+# once, we merge, and if anything changed we re-render the six non-JSON targets
+# ourselves.
+#
+# THIS IS STILL ONE CODE PATH. The templates are the same files matugen uses,
+# in the same syntax; nothing here decides which role a target takes. A theme
+# with no [roles] table never reaches the renderer at all, so the two cannot
+# drift on the common case. `check.sh`'s `templates` section holds the contract
+# that makes the uncommon case safe: every placeholder in every template is a
+# form this renderer implements, and every role it names exists in colors.json.
+apply_roles() {
+    local rc=0 out=""
+    out="$(python3 - "$1" "$CONFIG_HOME/matugen/config.toml" \
+                        "$CONFIG_HOME/quickshell/colors.json" <<'PYEOF'
+import json, os, pathlib, re, sys
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    sys.exit("[roles] overrides need python >= 3.11 (tomllib)")
+
+theme_path, cfg_path, colors_path = sys.argv[1:4]
+
+roles = tomllib.load(open(theme_path, "rb")).get("roles") or {}
+if not roles:
+    sys.exit(3)                      # no overrides — matugen's output stands
+
+palette = json.load(open(colors_path))
+colors = palette["colors"]
+
+# DESIGN.md §4 writes the example table in camelCase and matugen names roles in
+# snake_case. Accept either rather than making one of them wrong.
+index = {k.lower().replace("_", ""): k for k in colors}
+
+bad, merged = [], {}
+for key, value in roles.items():
+    real = index.get(key.lower().replace("_", ""))
+    if real is None:
+        bad.append(f"unknown role {key!r}")
+    elif not re.fullmatch(r"#[0-9a-fA-F]{6}", str(value)):
+        bad.append(f"role {key!r}: {value!r} is not #rrggbb")
+    else:
+        merged[real] = "#" + str(value)[1:].lower()
+# A typo in a theme must be loud. Silently ignoring it is how you get a theme
+# that reports success and looks exactly like the one you were replacing.
+if bad:
+    sys.exit("theme " + pathlib.Path(theme_path).stem + ": " + "; ".join(bad))
+
+colors.update(merged)
+json.dump(palette, open(colors_path, "w"), indent=2)
+
+# Re-render every target except the palette itself, which we just wrote.
+placeholder = re.compile(r"\{\{colors\.([a-z_0-9]+)\.default\.(hex|hex_stripped)\}\}")
+config = tomllib.load(open(cfg_path, "rb")).get("templates") or {}
+rendered = 0
+
+for name, spec in sorted(config.items()):
+    src = pathlib.Path(os.path.expanduser(spec["input_path"]))
+    dst = pathlib.Path(os.path.expanduser(spec["output_path"]))
+    if dst.resolve() == pathlib.Path(colors_path).resolve():
+        continue
+    if not src.exists():
+        sys.exit(f"template {name}: no such input {src}")
+
+    unknown = set()
+
+    def one(m):
+        role, form = m.group(1), m.group(2)
+        if role not in colors:
+            unknown.add(role)
+            return m.group(0)
+        return colors[role] if form == "hex" else colors[role][1:]
+
+    text, hits = placeholder.subn(one, src.read_text())
+    if unknown:
+        sys.exit(f"template {name}: role(s) not in colors.json: {', '.join(sorted(unknown))}")
+    # Both of these mean the renderer silently produced a file that still has
+    # template text in it — the exact failure shape this repo keeps hitting.
+    if hits == 0:
+        sys.exit(f"template {name}: no placeholders substituted")
+    if "{{" in text:
+        sys.exit(f"template {name}: unsupported placeholder survived: "
+                 + re.search(r"\{\{[^}]*\}\}", text).group(0))
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_text(text)
+    rendered += 1
+
+print(f"{len(merged)} role overrides, {rendered} targets re-rendered")
+PYEOF
+)" || rc=$?
+
+    case $rc in
+        0) ok "$(basename "${1%.toml}"): $out" ;;
+        3) : ;;                      # theme carries no [roles] table
+        *) die "role overrides failed for $(basename "$1")" ;;
+    esac
 }
 
 set_wallpaper() {

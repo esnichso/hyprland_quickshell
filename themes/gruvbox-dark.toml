@@ -1,3 +1,35 @@
+# Gruvbox Dark. See catppuccin-mocha.toml for what [roles] does and why only
+# the neutrals, the accent and the error colour are pinned.
 name = "Gruvbox Dark"
 seed = "#d79921"
 scheme = "dark"
+
+[roles]
+# Palette names in the comments are gruvbox's own (morhetz/gruvbox).
+background                = "#282828"   # bg
+on_background             = "#ebdbb2"   # fg
+
+surface                   = "#282828"   # bg
+surface_dim               = "#1d2021"   # bg0_h
+surface_bright            = "#504945"   # bg2
+surface_container_lowest  = "#1d2021"   # bg0_h
+surface_container_low     = "#32302f"   # bg0_s
+surface_container         = "#3c3836"   # bg1
+surface_container_high    = "#504945"   # bg2
+surface_container_highest = "#665c54"   # bg3
+
+on_surface                = "#ebdbb2"   # fg
+on_surface_variant        = "#bdae93"   # fg3
+outline                   = "#928374"   # gray
+outline_variant           = "#665c54"   # bg3
+shadow                    = "#1d2021"   # bg0_h
+inverse_surface           = "#ebdbb2"   # fg
+
+# The seed is the dim yellow, because that is the hue gruvbox is built around.
+# The accent is the bright one, which is what the palette actually uses for
+# anything meant to catch the eye.
+primary                   = "#fabd2f"   # bright yellow
+on_primary                = "#282828"   # bg
+
+error                     = "#fb4934"   # bright red
+on_error                  = "#282828"   # bg

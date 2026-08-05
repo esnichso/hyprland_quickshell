@@ -282,13 +282,20 @@ EMPTY_TERNARY = re.compile(r'^\s*(text|glyph)\s*:.*\?\s*""\s*:\s*""')
 GLYPH_MAP_OPEN = re.compile(r'\bproperty\s+var\s+\w*[Gg]lyphs?\s*:\s*\(\{')
 MAP_ENTRY_EMPTY = re.compile(r'^\s*"[^"]+"\s*:\s*""\s*,?\s*$')
 
-def strip_comment(line):
-    """Drop a // comment, but not a // that is inside a string.
+def scan(line):
+    """Return (code without its // comment, the quote char still open at EOL).
 
-    A regex cannot do this: `"://"` in a URL and `` `file://${p}` `` both look
-    like the start of a comment, and truncating there leaves an odd number of
-    quotes — which the unbalanced-quote rule below then reports as broken code.
-    That false positive fired on real, correct Media.qml.
+    A regex cannot find the comment: `"://"` in a URL and `` `file://${p}` ``
+    both look like the start of one, and truncating there leaves an odd number
+    of quotes — which the unbalanced-quote rule below then reports as broken
+    code. That false positive fired on real, correct Media.qml.
+
+    The same walk answers the unbalanced-quote question, and it has to, because
+    COUNTING quotes is wrong for the reverse reason. Wall.qml embeds a shell
+    script in a QML single-quoted string, and the sed inside it contains a
+    literal `"` in a bracket expression: `s/^name *= *"\\([^"]*\\)".*/\\1/p`.
+    That is three double quotes, all of them data, none of them delimiters.
+    A parity rule calls that broken; a walk knows it never left the '-string.
     """
     out = []
     quote = None
@@ -306,13 +313,13 @@ def strip_comment(line):
             break
         out.append(c)
         i += 1
-    return "".join(out)
+    return "".join(out), quote
 
 bad = []
 for f in qml:
     in_glyph_map = False
     for i, line in enumerate(f.read_text().splitlines(), 1):
-        code = strip_comment(line)
+        code, unterminated = scan(line)
 
         if GLYPH_MAP_OPEN.search(code):
             in_glyph_map = True
@@ -332,8 +339,9 @@ for f in qml:
                 bad.append((f.relative_to(repo), i, f"{prop} (int expected)", m.group(1)))
 
         # Balanced-brace typos are caught by the parser, but an unclosed string
-        # is not obvious in a diff.
-        if code.count('"') % 2 == 1 and "\\\"" not in code:
+        # is not obvious in a diff. Only `"` is reported: ' and ` legitimately
+        # stay open across lines in QML template literals.
+        if unterminated == '"':
             bad.append((f.relative_to(repo), i, "unbalanced quote", code.strip()[:40]))
 
 if bad:
@@ -397,6 +405,122 @@ if dupes or dark:
     sys.exit(1)
 
 print(f"  \033[32m ✓ \033[0m 16 ANSI colours, all distinct roles")
+PYEOF
+then pass=$((pass+1)); else fail=$((fail+1)); fi
+
+# ------------------------------------------------------- templates & themes
+
+sec "templates"
+
+# Static, no session needed.
+#
+# `install.sh --theme` renders the matugen templates ITSELF whenever a theme
+# carries a [roles] table (DESIGN.md §4). That renderer is deliberately tiny —
+# it implements two placeholder forms and nothing else — which is safe only as
+# long as the templates stay inside what it implements. This section is that
+# contract:
+#
+#   1. every placeholder is {{colors.<role>.default.(hex|hex_stripped)}}
+#   2. every role named exists in colors.json, which is the palette the
+#      renderer reads
+#   3. every [roles] key in every theme resolves to a real role, and every
+#      value is #rrggbb
+#   4. a theme's own pinned colours clear the 4.5:1 contrast floor
+#
+# 3 and 4 matter because a theme ships fixed values: catching an unreadable one
+# here is better than catching it in the `colour` section after it has already
+# been applied to the running desktop.
+
+if python3 - "$REPO" <<'PYEOF'
+import re, sys, pathlib
+
+repo = pathlib.Path(sys.argv[1])
+tdir = repo / "config/matugen/templates"
+palette = tdir / "colors.json"
+
+if not palette.exists():
+    print("  colors.json template missing — skipped"); sys.exit(0)
+
+GRAMMAR = re.compile(r"\{\{colors\.([a-z_0-9]+)\.default\.(hex|hex_stripped)\}\}")
+ANY = re.compile(r"\{\{[^}]*\}\}")
+
+known = set(re.findall(r'"([a-z_0-9]+)": "\{\{colors\.', palette.read_text()))
+bad = []
+
+for f in sorted(tdir.iterdir()):
+    if not f.is_file():
+        continue
+    text = f.read_text()
+    for m in ANY.finditer(text):
+        g = GRAMMAR.fullmatch(m.group(0))
+        if not g:
+            bad.append(f"{f.name}: {m.group(0)} is not a form install.sh can render")
+        elif g.group(1) not in known and f.name != "colors.json":
+            bad.append(f"{f.name}: role '{g.group(1)}' is not in colors.json")
+
+# ---- themes ----
+
+def lum(h):
+    h = h.lstrip("#")
+    c = [int(h[i:i+2], 16) / 255 for i in (0, 2, 4)]
+    c = [x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+
+def ratio(a, b):
+    la, lb = lum(a), lum(b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    tomllib = None
+
+index = {k.replace("_", ""): k for k in known}
+themes = sorted((repo / "themes").glob("*.toml"))
+worst, checked = 99.0, 0
+
+for t in themes:
+    if tomllib is None:
+        break
+    try:
+        data = tomllib.load(open(t, "rb"))
+    except Exception as e:
+        bad.append(f"{t.name}: not valid TOML — {e}")
+        continue
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", str(data.get("seed", ""))):
+        bad.append(f"{t.name}: seed {data.get('seed')!r} is not #rrggbb")
+
+    roles = data.get("roles") or {}
+    resolved = {}
+    for key, value in roles.items():
+        real = index.get(key.lower().replace("_", ""))
+        if real is None:
+            bad.append(f"{t.name}: unknown role '{key}'")
+        elif not re.fullmatch(r"#[0-9a-fA-F]{6}", str(value)):
+            bad.append(f"{t.name}: role '{key}' = {value!r} is not #rrggbb")
+        else:
+            resolved[real] = str(value)
+
+    # Only pairs the theme pins BOTH halves of can be judged here; the rest
+    # are matugen's and the `colour` section checks them once generated.
+    for fg, bg in (("on_surface", "surface"),
+                   ("on_surface_variant", "surface"),
+                   ("on_surface", "surface_container"),
+                   ("on_primary", "primary")):
+        if fg in resolved and bg in resolved:
+            r = ratio(resolved[fg], resolved[bg])
+            worst = min(worst, r)
+            checked += 1
+            if r < 4.5:
+                bad.append(f"{t.name}: {fg} on {bg} = {r:.1f}:1, below 4.5:1")
+
+if bad:
+    for b in bad:
+        print(f"  \033[31m ✗ \033[0m {b}")
+    sys.exit(1)
+
+note = f", {checked} theme contrast pairs (worst {worst:.1f}:1)" if checked else ""
+print(f"  \033[32m ✓ \033[0m {len(known)} roles, {len(themes)} themes{note}")
 PYEOF
 then pass=$((pass+1)); else fail=$((fail+1)); fi
 

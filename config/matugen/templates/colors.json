@@ -1,5 +1,8 @@
 {
   "_generated_by": "matugen — do not edit, this file is overwritten on every theme apply",
+
+  "_role_source_of_truth": "This file must list EVERY role any other template references. install.sh renders the other six from this map when a theme has [roles] overrides, so a role missing here is a render failure there. check.sh's `templates` section enforces it.",
+
   "colors": {
     "background": "{{colors.background.default.hex}}",
     "on_background": "{{colors.on_background.default.hex}}",
@@ -26,13 +29,21 @@
     "secondary": "{{colors.secondary.default.hex}}",
     "on_secondary": "{{colors.on_secondary.default.hex}}",
     "secondary_container": "{{colors.secondary_container.default.hex}}",
+    "on_secondary_container": "{{colors.on_secondary_container.default.hex}}",
 
     "tertiary": "{{colors.tertiary.default.hex}}",
     "on_tertiary": "{{colors.on_tertiary.default.hex}}",
     "tertiary_container": "{{colors.tertiary_container.default.hex}}",
+    "on_tertiary_container": "{{colors.on_tertiary_container.default.hex}}",
 
     "error": "{{colors.error.default.hex}}",
     "on_error": "{{colors.on_error.default.hex}}",
+    "on_error_container": "{{colors.on_error_container.default.hex}}",
+
+    "secondary_fixed": "{{colors.secondary_fixed.default.hex}}",
+    "secondary_fixed_dim": "{{colors.secondary_fixed_dim.default.hex}}",
+    "tertiary_fixed": "{{colors.tertiary_fixed.default.hex}}",
+    "tertiary_fixed_dim": "{{colors.tertiary_fixed_dim.default.hex}}",
 
     "shadow": "{{colors.shadow.default.hex}}",
     "inverse_surface": "{{colors.inverse_surface.default.hex}}"

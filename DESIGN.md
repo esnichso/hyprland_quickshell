@@ -194,15 +194,15 @@ You pick a theme; the wallpaper no longer drives colour. Each theme is one
 TOML in `themes/`:
 
 ```toml
-name = "catppuccin-mocha"
-seed = "#cba6f7"          # generates the 30 roles nobody notices
+name = "Catppuccin Mocha"
+seed = "#cba6f7"          # generates the 35 roles, most of which nobody notices
 
-[roles]                    # explicit overrides for the ones you do notice
+[roles]                    # explicit overrides for the ones you do
 background        = "#1e1e2e"
-surface           = "#181825"
-surfaceContainer  = "#313244"
-onSurface         = "#cdd6f4"
-onSurfaceVariant  = "#a6adc8"
+surface           = "#1e1e2e"
+surface_container = "#313244"
+on_surface        = "#cdd6f4"
+on_surface_variant= "#a6adc8"
 outline           = "#6c7086"
 primary           = "#cba6f7"
 error             = "#f38ba8"
@@ -210,12 +210,41 @@ error             = "#f38ba8"
 
 The seed goes through matugen to fill the full role set, then `[roles]` is
 merged on top. You get real Catppuccin where it matters and a coherent,
-auto-derived palette everywhere else — without hand-writing 40 hex values per
-theme, which is what made v1's theming a chore.
+auto-derived palette everywhere else — without hand-writing 35 hex values per
+theme, which is what made v1's theming a chore. Keys may be `snake_case` or
+`camelCase`; an unknown one is a hard error, never a silent skip.
+
+**Which roles a shipped theme pins, and which it leaves alone.** The neutrals
+are what makes a theme recognisable — you know Mocha by `#1e1e2e`, not by its
+tertiary container. So the three themes here pin the surfaces, the text, the
+outlines, the accent and the error colour, and leave the tonal variants to
+matugen. The mechanism is general: any of the 35 roles can be overridden.
+
+The one visible consequence is in the terminal. ANSI green, yellow, cyan and
+magenta come from `tertiary` and `secondary`, which are *not* pinned, so they
+stay matugen's derivations from the seed rather than the theme's own green and
+yellow. That is deliberate: Material 3 has four hue families and ANSI wants
+six, so pinning two of the six would leave the other four visibly mismatched
+against them. A coherent derived set reads better than a half-matched one.
 
 **Both modes render through the same templates.** There is exactly one code
 path from "a role set exists" to "every app is themed", which is the thing v1
 got right and worth keeping.
+
+**How the merge happens, given matugen renders the templates itself.** matugen
+has no hook to change a role before it writes, so `install.sh --theme` lets it
+render once, merges `[roles]` into `colors.json`, and — only if the theme
+actually has overrides — re-renders the other six targets from the merged map
+itself. It reuses the same template files in the same syntax, so nothing about
+*which role a target takes* is duplicated. A theme without `[roles]` never
+reaches that renderer, so the common path is still matugen's alone.
+
+That small renderer implements exactly two placeholder forms,
+`{{colors.<role>.default.hex}}` and `.hex_stripped`. `check.sh`'s `templates`
+section is the contract that keeps it safe: it fails if any template uses a
+form the renderer does not implement, if any template names a role that is not
+in `colors.json`, if any theme names a role that does not exist, or if a
+theme's own pinned colours miss the contrast floor below.
 
 ### Light and dark
 
