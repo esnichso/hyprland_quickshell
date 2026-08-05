@@ -369,6 +369,22 @@ roles = tomllib.load(open(theme_path, "rb")).get("roles") or {}
 if not roles:
     sys.exit(3)                      # no overrides — matugen's output stands
 
+def write_atomic(path, text):
+    # Write beside the target, then rename over it. `os.replace` is atomic on
+    # the same filesystem, so a watcher never sees a truncated file — it sees
+    # the old one and then the new one, with nothing in between.
+    #
+    # Theme.qml watches colors.json with inotify and reloads on change. A plain
+    # `open(path, "w")` fires that watcher the moment the file is truncated,
+    # and the reload reads a fragment. Matugen's own write has the same problem
+    # and is not ours to fix, which is why Theme.qml also debounces and retries
+    # — but everything THIS script writes can simply never be seen half-done.
+    p = pathlib.Path(path)
+    tmp = p.with_name(p.name + ".tmp")
+    tmp.write_text(text)
+    os.replace(tmp, p)
+
+
 palette = json.load(open(colors_path))
 colors = palette["colors"]
 
@@ -391,7 +407,7 @@ if bad:
     sys.exit("theme " + pathlib.Path(theme_path).stem + ": " + "; ".join(bad))
 
 colors.update(merged)
-json.dump(palette, open(colors_path, "w"), indent=2)
+write_atomic(colors_path, json.dumps(palette, indent=2) + "\n")
 
 # Re-render every target except the palette itself, which we just wrote.
 placeholder = re.compile(r"\{\{colors\.([a-z_0-9]+)\.default\.(hex|hex_stripped)\}\}")
@@ -427,7 +443,7 @@ for name, spec in sorted(config.items()):
                  + re.search(r"\{\{[^}]*\}\}", text).group(0))
 
     dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_text(text)
+    write_atomic(dst, text)
     rendered += 1
 
 print(f"{len(merged)} role overrides, {rendered} targets re-rendered")

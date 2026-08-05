@@ -69,18 +69,50 @@ Singleton {
         return (v === undefined || v === null || v === "") ? fallback : v;
     }
 
+    // RELOADING IS DEBOUNCED AND RETRIED, and both halves matter.
+    //
+    // matugen rewrites colors.json in place rather than writing a temp file and
+    // renaming it, so the watcher fires while the file is truncated or half
+    // written. Reloading on that first event reads a fragment, `JSON.parse`
+    // fails, and `onLoadFailed` runs — and nothing re-read the file afterwards,
+    // because the only thing that triggers a read is the NEXT change.
+    //
+    // The result was a theme that applied "sometimes": matugen usually emits
+    // several write events, so a later one often caught the finished file and
+    // it worked. When it did not, every role fell back to the defaults at the
+    // top of this file — which is why a desktop that failed this way looked
+    // like Catppuccin Mocha no matter which wallpaper produced it.
+    //
+    // So: collapse a burst of events into one read of the finished file, and
+    // treat a failed read as transient before believing it.
     FileView {
         id: colorsFile
         path: `${Quickshell.env("HOME")}/.config/quickshell/colors.json`
 
         property bool loaded: false
+        property int attempts: 0
 
         watchChanges: true
-        onFileChanged: reload()
-        onLoaded: loaded = true
+        onFileChanged: debounce.restart()
+
+        onLoaded: {
+            loaded = true;
+            attempts = 0;
+        }
+
+        // `loaded` is deliberately NOT cleared while retrying. A partial read
+        // is not a reason to drop a palette that is already on screen — doing
+        // so would flash the whole desktop to the built-in defaults and back.
         onLoadFailed: {
+            if (attempts < 5) {
+                attempts = attempts + 1;
+                retry.restart();
+                return;
+            }
             loaded = false;
-            console.warn("Theme: colors.json missing — run install.sh --theme. Using built-in defaults.");
+            console.warn("Theme: could not read colors.json after 5 attempts —",
+                         "it is missing, or matugen left it unparseable.",
+                         "Run install.sh --theme. Using built-in defaults.");
         }
 
         JsonAdapter {
@@ -90,5 +122,27 @@ Singleton {
             // touching this file.
             property var colors: ({})
         }
+    }
+
+    // Declared beside the FileView rather than inside it: FileView's one child
+    // slot is its adapter, and a Timer parented there is not something to bet
+    // the palette on.
+    //
+    // 120ms is long enough to swallow the truncate-then-write burst matugen
+    // produces and short enough that the desktop still recolours as one motion
+    // rather than as a visible step.
+    Timer {
+        id: debounce
+        interval: 120
+        onTriggered: colorsFile.reload()
+    }
+
+    // Backs off a little further than the debounce: if the first read landed
+    // mid-write, the writer is still going, and reading again immediately just
+    // spends an attempt to learn the same thing.
+    Timer {
+        id: retry
+        interval: 180
+        onTriggered: colorsFile.reload()
     }
 }

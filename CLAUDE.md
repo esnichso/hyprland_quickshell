@@ -544,6 +544,28 @@ How distinct the palette is overall is `theme.style` (matugen `--type`) and
 own default, `scheme-tonal-spot`, is deliberately muted; that is a Material
 decision rather than a bug, so do not "fix" it by changing the template.
 
+**A watcher on a file an external process rewrites IN PLACE sees it half
+written.** `Theme.qml` watches `colors.json` with `watchChanges` and reloaded on
+the first event. matugen truncates and writes rather than writing a temp file
+and renaming, so that first event often arrives with the file empty or partial;
+`JSON.parse` fails, `onLoadFailed` runs — and **nothing re-read it**, because
+the only thing that triggers a read is the next change. Every role then fell
+back to the defaults at the top of `Theme.qml`, so a desktop that failed this
+way looked like Catppuccin Mocha regardless of the wallpaper that produced it.
+
+It fails *intermittently*, which is what makes it expensive: matugen usually
+emits several write events, so a later one normally catches the finished file.
+
+Two fixes, and both belong:
+
+- **Reader:** debounce the watcher (collapse the burst into one read) and treat
+  a failed read as transient — retry before believing it, and do **not** clear
+  the loaded flag while retrying, or the desktop flashes to defaults and back.
+- **Writer:** everything this repo writes goes through `write_atomic` in
+  `install.sh` — write beside the target, then `os.replace`. A watcher then sees
+  the old file, then the new one, never a fragment. matugen's own write is not
+  ours to fix, which is exactly why the reader needs the first half too.
+
 **Contrast against an opaque role is not the contrast you get.** Nothing in this
 shell is opaque: the island is `surfaceContainer` at 0.72 and the panels are
 `surfaceContainerLow` at 0.86, both composited over a blurred wallpaper. A
