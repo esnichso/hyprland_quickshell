@@ -226,6 +226,60 @@ do_services() {
     fi
 }
 
+# ------------------------------------------------------- resident GTK apps
+
+# GTK reads gtk.css ONCE, at PROCESS START. That is not the same as "next time
+# you open a window": GNOME apps are D-Bus activated and stay resident after
+# their last window closes, so asking for a new window asks the SURVIVING
+# process for one and it is still drawing the palette that was current when it
+# first launched. The app therefore looks stale in a way that survives exactly
+# the test you would use to check for staleness — a screenshot showed Nautilus
+# on an orange palette (hue 28) while the shell and kitty were both on a blue
+# one (hue 210), and the window had been opened after the theme change.
+#
+# This is the same problem `kitty @ set-colors` solves above, and it gets the
+# same treatment: finish the job rather than leaving one target stale.
+#
+# ONLY QUITS APPS WITH NO OPEN WINDOWS. `nautilus --quit` closes every window it
+# has, and silently closing a file manager someone is in the middle of using to
+# fix a colour is a bad trade. With no windows open the quit is invisible and
+# the next launch reads the new palette; with windows open, say so instead.
+refresh_gtk_apps() {
+    # "<binary>:<window class>" — the class is what `hyprctl clients` reports,
+    # which is the app id, not the binary name.
+    local apps=("nautilus:org.gnome.Nautilus")
+
+    local entry bin cls
+    for entry in "${apps[@]}"; do
+        bin="${entry%%:*}"; cls="${entry##*:}"
+
+        command -v "$bin" >/dev/null || continue
+        # Not resident, so nothing is holding a stale stylesheet. Skipping also
+        # avoids `--quit` D-Bus-activating the app just to shut it down again.
+        pgrep -x "$bin" >/dev/null 2>&1 || continue
+
+        # Cannot see the windows -> do not close anything. Being wrong in this
+        # direction costs a stale titlebar; being wrong in the other costs
+        # whatever the user had open.
+        if ! command -v hyprctl >/dev/null || ! hyprctl clients -j >/dev/null 2>&1; then
+            warn "$bin is running with the old palette — restart it, or run: $bin --quit"
+            continue
+        fi
+
+        local open
+        open="$(hyprctl clients -j 2>/dev/null \
+                | python3 -c 'import json,sys; c=json.load(sys.stdin);
+print(sum(1 for w in c if w.get("class") == sys.argv[1]))' "$cls" 2>/dev/null || echo 0)"
+
+        if [[ "$open" == "0" ]]; then
+            "$bin" --quit >/dev/null 2>&1 || true
+            ok "$bin restarted on next launch (it was resident with the old palette)"
+        else
+            warn "$bin has $open window(s) open and keeps the old palette until it exits — $bin --quit"
+        fi
+    done
+}
+
 # ---------------------------------------------------------------- theme
 
 do_theme() {
@@ -323,6 +377,8 @@ do_theme() {
 
     # Hyprland re-reads conf/colors.lua on reload; border gradients update live.
     command -v hyprctl >/dev/null && hyprctl reload >/dev/null 2>&1 && ok "hyprctl reload"
+
+    refresh_gtk_apps
 
     # The login screen is the one target this cannot update: /usr/share is
     # root-owned and this function has to stay runnable from the picker, which

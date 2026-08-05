@@ -323,9 +323,15 @@ Qt platform theme. Its colours are `r,g,b` **decimals** — a hex string parses 
 a "new window" asks the surviving process for one; it does not start a new
 process, so it is still showing whatever palette was current when it first
 launched. The app therefore looks stale in a way that survives exactly the test
-you would use to check for staleness. `nautilus --quit` (or `pkill nautilus`)
-is what actually reloads it. Do not conclude from this that the GTK target did
-not regenerate — check the file's mtime before blaming the pipeline.
+you would use to check for staleness. Do not conclude from this that the GTK
+target did not regenerate — check the file's mtime before blaming the pipeline.
+
+`install.sh --theme` now finishes the job the way it already did for kitty:
+`refresh_gtk_apps()` quits resident GTK apps **that have no windows open**, so
+the next launch reads the new palette and nothing visible is disturbed. It will
+not close a window you are using — `nautilus --quit` closes every window it has,
+and silently shutting a file manager to fix a colour is the wrong trade. With
+windows open it says so and leaves it to you.
 
 **A missing GTK theme fails silently and convincingly**: GTK falls back to
 Adwaita, still honours the dark preference, and hands you a desktop that looks
