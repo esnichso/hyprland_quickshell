@@ -183,24 +183,39 @@ Singleton {
             if (id !== "") {
                 // Cache the failure as an empty string too. Without it a
                 // decode that cannot work is retried on every keystroke.
-                root.thumbs = Object.assign({}, root.thumbs, {
-                    [id]: code === 0 ? "file://" + root.cacheDir + "/" + id : ""
-                });
+                // Built by assignment rather than with a computed key. The
+                // whole object is replaced either way — a `var` does not
+                // notify on a property write — and this form does not depend
+                // on ES6 computed keys being available in whichever JS engine
+                // is reading the file, including node in tests/launcher.js.
+                const next = Object.assign({}, root.thumbs);
+                next[id] = code === 0 ? "file://" + root.cacheDir + "/" + id : "";
+                root.thumbs = next;
             }
             root.pumpThumbs();
         }
     }
 
-    // Entries do not come back once cliphist has rotated them out, so their
-    // decoded files are dead weight. Cleared wholesale when the list is
-    // re-read rather than diffed: the directory only ever holds what one
-    // launcher session asked for, and `rm -rf` on a path we built ourselves is
-    // cheaper to reason about than a per-file reconciliation.
+    // Forget what has been decoded, so the next list re-decodes each id once.
+    //
+    // NO `rm -rf` HERE. It was here, and it raced the very decodes it ran
+    // beside: `execDetached` returns immediately, so a delete spawned when the
+    // list refreshes can land after a decode that started a moment later, and
+    // the thumbnail is removed under the Image that was about to read it. The
+    // ordering happened to work most of the time, which is the worst kind.
+    //
+    // Nothing needs deleting anyway. Every decode overwrites its own id, so a
+    // stale file cannot be shown, and the directory is bounded by cliphist's
+    // history size. Pruning belongs at startup, when nothing is decoding.
     function clearThumbs() {
         root.thumbs = ({});
         root.thumbQueue = [];
-        Quickshell.execDetached(["sh", "-c", 'rm -rf -- "$1"', "sh", root.cacheDir]);
     }
+
+    // Once, at shell start: nothing has been queued yet, so there is no decode
+    // for this to race.
+    Component.onCompleted:
+        Quickshell.execDetached(["sh", "-c", 'rm -rf -- "$1"', "sh", root.cacheDir])
 
     function copy(entry) {
         if (!entry)

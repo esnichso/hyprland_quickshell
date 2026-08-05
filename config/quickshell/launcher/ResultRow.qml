@@ -36,10 +36,12 @@ Item {
     readonly property string thumb:
         isClipImage && Clip.thumbs[clipEntry.id] ? Clip.thumbs[clipEntry.id] : ""
 
-    // Ask when the row is bound to an entry, not on completion: the result list
-    // reuses delegates, so a row that was showing entry A is handed entry B
-    // without ever being created again.
+    // Both, because delegate lifecycle order is not something to bet on: a row
+    // may be constructed with `item` already set (no change signal fires) or be
+    // handed a different entry later (no second construction). requestThumb is
+    // idempotent, so asking twice costs one map lookup.
     onClipEntryChanged: if (isClipImage) Clip.requestThumb(clipEntry);
+    Component.onCompleted: if (isClipImage) Clip.requestThumb(clipEntry);
 
     // A text face (¯\_(ツ)_/¯) rather than a pictograph. Ten characters wide
     // instead of one, and built from scripts an emoji font does not cover — so
