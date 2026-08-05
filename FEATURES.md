@@ -606,10 +606,15 @@ and the cost of guessing wrong is a login screen you cannot get past. So:
 | `Connections { function onX() }` | Needs Qt 5.15, and the older `onX:` form is deprecated in Qt 6. Signals are connected with `signal.connect()`, which both engines have always accepted, inside a `try` so a signal one version lacks cannot abort the rest of the block. |
 | `QtQuick.Controls` | Resolves a style at load, and a style not installed for the `sddm` user is a greeter that does not draw. |
 
+**`sddm-greeter-qt6 --test-mode` can never log in.** Test mode runs the greeter
+with no sddm daemon behind it, so `login()` has nothing to talk to and the
+watchdog below always fires. Use it to check that the theme *draws*; a real
+login can only be tested by logging out.
+
 **Nothing fails silently.** An empty username, an empty password, and an
 exception out of `login()` each put a sentence on the card, and a 5s watchdog
-reports `no answer from sddm (user '…', session N)` if neither `loginSucceeded`
-nor `loginFailed` arrives — naming the two values being passed, because those
+reports `no answer from sddm — normal under --test-mode (user '…', session N)`
+if neither `loginSucceeded` nor `loginFailed` arrives — naming the two values being passed, because those
 are the two that can be wrong. Without the watchdog, `busy` stuck `true` on any
 silent failure and left the password field permanently disabled.
 

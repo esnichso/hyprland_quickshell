@@ -250,7 +250,7 @@ Rectangle {
             // click the wrong thing twice.
             Text {
                 width: parent.width
-                height: 30
+                height: 46
                 text: root.message
                 color: root.cError
                 font.family: root.uiFont
@@ -259,7 +259,7 @@ Rectangle {
                 // Wraps rather than elides: the diagnostics put their values at
                 // the END, which is exactly what eliding removes.
                 wrapMode: Text.Wrap
-                maximumLineCount: 2
+                maximumLineCount: 3
             }
         }
     }
@@ -363,12 +363,18 @@ Rectangle {
     // arrives the greeter would sit with a dead password field and no
     // explanation — which is what an empty user or a bad session index looks
     // like from outside. Name both; they are the two values being passed.
+    //
+    // IT ALSO FIRES UNDER `--test-mode`, ALWAYS, and that is correct: test mode
+    // has no sddm daemon behind the greeter, so login() has nothing to talk to
+    // and no reply can come. The message says so, because "no answer from sddm"
+    // on a preview reads like a fault when it is the only possible outcome.
     Timer {
         id: watchdog
         interval: 5000
         onTriggered: {
             root.busy = false;
-            root.message = "no answer from sddm (user '" + root.currentUser
+            root.message = "no answer from sddm — normal under --test-mode "
+                         + "(user '" + root.currentUser
                          + "', session " + root.sessionIndex + ")";
             pw.forceActiveFocus();
         }
