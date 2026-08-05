@@ -26,13 +26,23 @@ hl.window_rule({ match = { class = "^(pavucontrol)$" },            float = true 
 hl.window_rule({ match = { title = "^(Picture-in-Picture)$" },
                  float = true, pin = true, border_size = 0, size = { 480, 270 } })
 
--- Thunar's bulk-rename and progress dialogs — every thunar window whose title
--- is not the plain file manager.
+-- NO FILE-MANAGER FLOAT RULE, deliberately.
 --
+-- There was one, for Thunar's bulk-rename and progress dialogs: match every
+-- window of class `thunar` whose title was not the plain file manager. It is
+-- gone with Thunar, and the obvious translation to Nautilus is a trap —
+-- Nautilus titles its MAIN window with the current folder's name, not
+-- "Nautilus", so a `negative:^Nautilus$` title rule would float the file
+-- manager itself. Whether Nautilus even opens separate toplevels worth
+-- floating is unverified; find out before writing one:
+--
+--   hyprctl clients | grep -A4 -i nautilus
+--
+-- The RE2 lesson the old rule taught is worth keeping even without the rule.
 -- Hyprland matches with Google's RE2, which has NO lookahead: the obvious
--- `^(?!Thunar$).*` is a syntax error, not a non-match. RE2 negation is a
--- `negative:` prefix on the whole pattern instead.
-hl.window_rule({ match = { class = "^(thunar)$", title = "negative:^Thunar$" }, float = true })
+-- `^(?!Nautilus$).*` is a syntax error, not a non-match. RE2 negation is a
+-- `negative:` prefix on the whole pattern instead. check.sh greps for `(?=`,
+-- `(?!` and `(?<` in this file, with comments stripped first.
 
 -- Zen and Firefox open a sharing indicator that is 40px tall and would
 -- otherwise take a tile.

@@ -35,7 +35,7 @@ where it makes sense**.
 | --- | --- |
 | `SUPER` + `Return` | Terminal — kitty |
 | `SUPER` + `Space` | **Launcher** (apps, run, calc, emoji, clipboard, windows) |
-| `SUPER` + `E` | File manager — thunar |
+| `SUPER` + `E` | File manager — nautilus |
 | `SUPER` + `B` | Browser |
 | `XF86Favorites` | Launcher — the star key on ThinkPad keyboards |
 

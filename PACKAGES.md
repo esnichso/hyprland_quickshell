@@ -132,7 +132,7 @@ runtime than the system, or you want it sandboxed on purpose. None of those is
 true here.
 | `fish` | extra | Shell |
 | `starship` | extra | Prompt, themed from the palette |
-| `thunar` `thunar-volman` `tumbler` `ffmpegthumbnailer` `gvfs` | extra | File manager and thumbnails |
+| `nautilus` `ffmpegthumbnailer` `gvfs` | extra | File manager and thumbnails. **Nautilus rather than Thunar** because it is GTK4/libadwaita and `gtk-colors.css` defines libadwaita's named colours — so it takes the generated palette directly, where a GTK3 file manager only gets whatever the GTK3 sheet carries. `tumbler` and `thunar-volman` left with Thunar: XFCE services Nautilus does not use. |
 | `udiskie` | extra | Automount removable media |
 | `btop` | extra | The real system monitor for when the panel isn't enough |
 | `fastfetch` | extra | Because you will screenshot this. Configured in `config/fastfetch/config.jsonc`; it takes its colours from the **terminal's ANSI palette**, which the kitty template already generates, so it needs no matugen target of its own. Its `theme` / `icons` / `font` / `cursor` modules read the live GTK settings, which makes it a one-command answer to "did GTK theming apply?". |

@@ -29,7 +29,7 @@ local function shell(target)
 end
 
 local terminal    = "kitty"
-local fileManager = "thunar"
+local fileManager = "nautilus"
 local browser     = "zen-browser"
 
 --------------------------------------------------------------------- launching

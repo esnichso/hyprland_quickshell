@@ -591,7 +591,7 @@ wallpaper back inside the shell, which you explicitly didn't want.
 | Screenshots | `grim` + `slurp` + `satty` | Annotation is a real app's job |
 | Screen recording | `wf-recorder` | Same |
 | Colour picker | `hyprpicker` | Same |
-| File manager | `thunar` | Same |
+| File manager | `nautilus` | Same |
 
 ### 9.1 The login screen
 

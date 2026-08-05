@@ -78,9 +78,11 @@ wev
 kitty
 fish
 starship
-thunar
-thunar-volman
-tumbler
+# Nautilus, not Thunar: it is GTK4/libadwaita, and gtk-colors.css defines
+# libadwaita's named colours — so it picks up the generated palette directly
+# instead of only through the GTK3 sheet. tumbler and thunar-volman went with
+# Thunar; they are XFCE services Nautilus does not use.
+nautilus
 ffmpegthumbnailer
 gvfs
 udiskie
